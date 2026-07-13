@@ -49,18 +49,45 @@ async def lifespan(app: FastAPI):
             options.cols = 64
             options.chain_length = 1
             options.parallel = 1
-            options.disable_hardware_pulsing = True
             options.hardware_mapping = "regular"
             options.brightness = 80
+
+            # ── Anti-flicker settings ──────────────────────────────────────────
+            # Set False if you run with `sudo` — hardware pulsing gives much
+            # smoother output. True is needed without sudo.
+            options.disable_hardware_pulsing = False
+
+            # Slow down GPIO if you see glitches/flickering:
+            #   Pi 3 → try 2 or 3
+            #   Pi 4 → try 4
+            #   Pi 5 → try 5
+            options.gpio_slowdown = 4
+
+            # Lower pwm_bits reduces flicker at the cost of colour depth.
+            # Range 1-11. Start at 11 (full quality); drop to 7 or 5 if
+            # flickering persists.
+            options.pwm_bits = 11
+
+            # Lower this if you still see flicker (default is 130).
+            options.pwm_lsb_nanoseconds = 130
+            # ──────────────────────────────────────────────────────────────────
+
             matrix = RGBMatrix(options=options)
 
+            # Use a dedicated off-screen canvas + SwapOnVSync so the new frame
+            # is only shown between refresh cycles — eliminates mid-frame tears.
+            canvas = matrix.CreateFrameCanvas()
+
             async def matrix_update_loop():
+                nonlocal canvas
                 while True:
-                    matrix.SetImage(get_current_frame())
-                    await asyncio.sleep(0.1)  # ~10 fps
+                    frame = get_current_frame()
+                    canvas.SetImage(frame)
+                    canvas = matrix.SwapOnVSync(canvas)  # atomic vsync swap
+                    await asyncio.sleep(0.05)  # ~20 fps is plenty for smooth output
 
             asyncio.create_task(matrix_update_loop())
-            print("Matrix background loop started.")
+            print("Matrix background loop started (vsync double-buffer).")
         except ImportError:
             print("WARNING: rgbmatrix library not found. Physical mode unavailable.")
 
