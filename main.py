@@ -13,6 +13,7 @@ from ui import render_ui
 load_dotenv()
 
 MATRIX_ENV = os.getenv("MATRIX_ENV", "virtual").lower()
+MATRIX_FPS = int(os.getenv("MATRIX_FPS", "20"))
 
 # ── State ──────────────────────────────────────────────────────────────────────
 current_scene: str = "hello_world"
@@ -84,7 +85,7 @@ async def lifespan(app: FastAPI):
                     frame = get_current_frame()
                     canvas.SetImage(frame)
                     canvas = matrix.SwapOnVSync(canvas)  # atomic vsync swap
-                    await asyncio.sleep(0.05)  # ~20 fps is plenty for smooth output
+                    await asyncio.sleep(1.0 / MATRIX_FPS)
 
             asyncio.create_task(matrix_update_loop())
             print("Matrix background loop started (vsync double-buffer).")
@@ -107,7 +108,7 @@ app = FastAPI(title="RGB Matrix Controller", lifespan=lifespan)
 
 @app.get("/", response_class=HTMLResponse)
 async def get_index():
-    return HTMLResponse(content=render_ui(MATRIX_ENV, current_scene, list(SCENES.keys())))
+    return HTMLResponse(content=render_ui(MATRIX_ENV, current_scene, list(SCENES.keys()), MATRIX_FPS))
 
 
 @app.post("/set-scene/{scene_name}")

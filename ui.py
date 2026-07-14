@@ -11,14 +11,15 @@ SCENE_LABELS: dict[str, str] = {
     "hello_world": "💬 Hello World",
     "heart": "❤️ Heart",
     "clock": "🕐 Clock",
+    "components_test": "🧪 Test Components",
 }
 
 
-def render_ui(matrix_env: str, current_scene: str, available_scenes: list[str]) -> str:
+def render_ui(matrix_env: str, current_scene: str, available_scenes: list[str], fps: int = 20) -> str:
     """Return the full HTML string for the controller page."""
 
     preview_block = _preview_block() if matrix_env == "virtual" else ""
-    preview_script = _preview_script() if matrix_env == "virtual" else ""
+    preview_script = _preview_script(fps) if matrix_env == "virtual" else ""
     buttons_html = _buttons_html(available_scenes)
 
     return f"""<!DOCTYPE html>
@@ -209,9 +210,10 @@ def _preview_block() -> str:
         </div>"""
 
 
-def _preview_script() -> str:
-    return """
-        setInterval(() => {
+def _preview_script(fps: int) -> str:
+    interval_ms = int(1000 / fps)
+    return f"""
+        setInterval(() => {{
             const img = document.getElementById('matrix-img');
             if (img) img.src = '/matrix-image?t=' + new Date().getTime();
-        }, 500);"""
+        }}, {interval_ms});"""
