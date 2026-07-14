@@ -15,19 +15,13 @@ RUN git clone --depth 1 https://github.com/python-pillow/Pillow.git \
     && cp Pillow/src/libImaging/*.h /usr/local/include/ \
     && rm -rf Pillow
 
-# RUN pip install git+https://github.com/hzeller/rpi-rgb-led-matrix
-
-# 3. Clone the repo
-WORKDIR /app
-RUN git clone https://github.com/hzeller/rpi-rgb-led-matrix.git
-
-# 6. Build and install the python package natively via pip
-RUN pip install rpi-rgb-led-matrix/.
-
-RUN pip install Pillow
-
 COPY . /app
+
+WORKDIR /app
+
+RUN pip install -r requirements.txt
+
 # 7. Move right into the sample folder for testing
 #WORKDIR /app/rpi-rgb-led-matrix/bindings/python/samples
 # Open the bash terminal
-CMD ["bash"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
