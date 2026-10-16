@@ -1,0 +1,18 @@
+services:
+  rgb-matrix:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # If MATRIX_ENV is 'physical', this resolves to true, granting hardware access
+    privileged: ${COMPOSE_PRIVILEGED:-false}
+    ports:
+      - "${PORT:-8000}:8000"
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+
+  dbus-api:
+    image: ardila1108/dbus-api:latest
+    ports:
+      - "3000:3000"
