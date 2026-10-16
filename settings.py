@@ -4,22 +4,23 @@ import os
 # --- Runtime -------------------------------------------------------------
 # "simulator" = browser preview (PC), "hardware" = the real panel (Pi).
 # docker-compose files set these through env vars; the defaults are for the PC.
-BACKEND = os.environ.get("LED_BACKEND", "simulator")
+BACKEND = os.environ.get("LED_BACKEND") or "simulator"
 # "demo" = fake countdown data, "live" = ledwall/data_sources/live.py
 # Change the default to "live" here once fetch_pages() is implemented.
-DATA_SOURCE = os.environ.get("LED_DATA", "demo")
+DATA_SOURCE = os.environ.get("LED_DATA") or "demo"
 # Which screen is shown: "bus" or "test" (panel test patterns).
-SCREEN = os.environ.get("LED_SCREEN", "test")
+SCREEN = os.environ.get("LED_SCREEN") or "test"
 TEST_SECONDS_PER_PATTERN = 4
 FPS = 20
 SIMULATOR_PORT = 8000
 
-# --- Matrix (Pi 4 + Adafruit Bonnet) ---------------------------------------
+# --- Matrix (copied from the hello-world script that works on your Pi) -----
 ROWS = 64
 COLS = 64
-HARDWARE_MAPPING = "adafruit-hat"   # "adafruit-hat-pwm" if you did the PWM mod
-GPIO_SLOWDOWN = 4                   # noise/ghosting -> raise, flicker -> lower
-BRIGHTNESS = 60                     # 1-100
+HARDWARE_MAPPING = "regular"        # "adafruit-hat" only for a real Bonnet wiring
+DISABLE_HARDWARE_PULSING = True
+GPIO_SLOWDOWN = None                # None = library default; flicker/noise -> try 2-4
+BRIGHTNESS = 80                     # 1-100
 
 # --- Data ------------------------------------------------------------------
 POLL_SECONDS = 20                   # how often live.fetch_pages() is called

@@ -10,7 +10,7 @@ services:
       - .:/app            # edit code on the host, then restart the container
     environment:
       LED_BACKEND: simulator
-      LED_SCREEN: ${LED_SCREEN:-bus}
+      LED_SCREEN: ${LED_SCREEN:-}   # empty = use settings.py
 
   test:
     build: .

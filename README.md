@@ -56,7 +56,7 @@ one-off runs: `LED_SCREEN=test docker compose up` (PC) or
 
 ## Set up the Pi (once)
 
-1. Solder-bridge the E-line jumper on the Bonnet (needed for 64x64).
+1. Match the wiring settings to what works on your panel (`HARDWARE_MAPPING`, etc. in `settings.py`). If you use an Adafruit Bonnet, solder-bridge the E-line jumper (needed for 64x64).
 2. Add `dtparam=audio=off` to `/boot/firmware/config.txt`, reboot.
 3. Install Docker (includes `docker compose`): `curl -fsSL https://get.docker.com | sh`,
    then `sudo usermod -aG docker $USER` and log in again.

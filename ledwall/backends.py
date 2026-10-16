@@ -1,11 +1,14 @@
 """Where finished frames go: the real panel or a browser preview."""
 import io
+import logging
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from PIL import Image, ImageChops, ImageDraw
 
 import settings
+
+log = logging.getLogger(__name__)
 
 
 class HardwareBackend:
@@ -17,10 +20,17 @@ class HardwareBackend:
         o = RGBMatrixOptions()
         o.rows = settings.ROWS
         o.cols = settings.COLS
+        o.chain_length = 1
+        o.parallel = 1
         o.hardware_mapping = settings.HARDWARE_MAPPING
-        o.gpio_slowdown = settings.GPIO_SLOWDOWN
+        o.disable_hardware_pulsing = settings.DISABLE_HARDWARE_PULSING
         o.brightness = settings.BRIGHTNESS
+        if settings.GPIO_SLOWDOWN is not None:
+            o.gpio_slowdown = settings.GPIO_SLOWDOWN
         o.drop_privileges = False   # we run as root inside the container
+        log.info("matrix: %dx%d mapping=%s pulsing_disabled=%s slowdown=%s brightness=%s",
+                 o.rows, o.cols, o.hardware_mapping, o.disable_hardware_pulsing,
+                 settings.GPIO_SLOWDOWN, o.brightness)
         self._matrix = RGBMatrix(options=o)
         self._canvas = self._matrix.CreateFrameCanvas()
 

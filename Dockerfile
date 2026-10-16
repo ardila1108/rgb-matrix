@@ -10,9 +10,6 @@ ARG PILLOW_REF=11.3.0
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 WORKDIR /app
 
-COPY requirements.txt requirements-dev.txt ./
-RUN pip install --no-cache-dir -r requirements-dev.txt
-
 RUN if [ "$WITH_HARDWARE" = "1" ]; then \
       set -eux; \
       apt-get update; \
@@ -24,6 +21,9 @@ RUN if [ "$WITH_HARDWARE" = "1" ]; then \
       CPATH=/tmp/pillow/src/libImaging pip install --no-cache-dir /tmp/rgbmatrix; \
       rm -rf /tmp/pillow /tmp/rgbmatrix; \
     fi
+
+COPY requirements.txt requirements-dev.txt ./
+RUN pip install --no-cache-dir -r requirements-dev.txt
 
 COPY . .
 CMD ["python", "run.py"]

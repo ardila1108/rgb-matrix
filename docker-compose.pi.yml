@@ -9,4 +9,4 @@ services:
     restart: unless-stopped
     environment:
       LED_BACKEND: hardware
-      LED_SCREEN: ${LED_SCREEN:-bus}
+      LED_SCREEN: ${LED_SCREEN:-}   # empty = use settings.py
