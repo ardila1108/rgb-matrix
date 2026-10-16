@@ -1,34 +1,34 @@
-# Load variables from .env file (ignoring errors if it doesn't exist yet)
+# Load variables from .env file
 -include .env
 export
 
-# Default image name
-IMAGE_NAME = rgb-matrix-app
-PORT = 8000
+PORT ?= 8000
 
-# Check the MATRIX_ENV variable loaded from .env
+# Setup defaults for Virtual mode
+COMPOSE_CMD = docker compose up --build
+export COMPOSE_PRIVILEGED = false
+
+# Override if in Physical mode (Raspberry Pi)
 ifeq ($(MATRIX_ENV),physical)
-    # Physical mode (Raspberry Pi) requires sudo and hardware access privileges
-    RUN_CMD = sudo docker run --privileged -p $(PORT):8000 -v $(CURDIR):/app --env-file .env -it --rm $(IMAGE_NAME)
-else
-    # Virtual mode (Local PC) just runs standard docker
-    RUN_CMD = docker run -p $(PORT):8000 -v "$(CURDIR):/app" --env-file .env -it --rm $(IMAGE_NAME)
+    # Raspberry Pi needs hardware permissions and often sudo for Docker
+    COMPOSE_CMD = sudo COMPOSE_PRIVILEGED=true docker compose up --build
+    export COMPOSE_PRIVILEGED = true
 endif
 
-.PHONY: help build run clean
+.PHONY: help build-all up down clean
 
 help:
 	@echo "Available commands:"
-	@echo "  make build  - Build the Docker image"
-	@echo "  make run    - Run the Docker container (automatically uses sudo/privileged on Pi based on .env)"
-	@echo "  make clean  - Remove the Docker image"
+	@echo "  make up    - Start both containers (auto-detects Pi vs PC via .env)"
+	@echo "  make down  - Stop the containers"
+	@echo "  make clean - Stop and remove volumes"
 
-build:
-	docker build -t $(IMAGE_NAME) .
+up:
+	@echo "Starting application in $(MATRIX_ENV) mode..."
+	$(COMPOSE_CMD)
 
-run:
-	@echo "Running in $(MATRIX_ENV) mode..."
-	$(RUN_CMD)
+down:
+	docker compose down
 
 clean:
-	docker rmi $(IMAGE_NAME)
+	docker compose down -v
