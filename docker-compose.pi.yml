@@ -1,0 +1,12 @@
+# Raspberry Pi: real panel. Built on the Pi itself (first build takes a few minutes).
+services:
+  led-wall:
+    build:
+      context: .
+      args:
+        WITH_HARDWARE: "1"
+    privileged: true        # the panel library needs raw GPIO / /dev/mem access
+    restart: unless-stopped
+    environment:
+      LED_BACKEND: hardware
+      LED_SCREEN: ${LED_SCREEN:-bus}

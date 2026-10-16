@@ -1,0 +1,18 @@
+# PC development: simulator in the browser + demo data.
+#   docker compose up                    -> http://localhost:8000
+#   docker compose run --rm test         -> run the tests
+services:
+  led-wall:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app            # edit code on the host, then restart the container
+    environment:
+      LED_BACKEND: simulator
+      LED_SCREEN: ${LED_SCREEN:-bus}
+
+  test:
+    build: .
+    command: pytest
+    profiles: ["test"]
