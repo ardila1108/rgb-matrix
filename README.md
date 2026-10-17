@@ -7,6 +7,7 @@ after the walk to the stop.
 ## Layout
 
 ```
+routes.py                   <- YOUR buses: stops, walk times, categories
 settings.py                 every tunable value (screen, matrix, timing, colors, rules)
 run.py                      entry point
 ledwall/
@@ -16,7 +17,7 @@ ledwall/
   screens/test.py           TestScreen: panel test patterns
   manager.py                ScreenManager: holds screens, picks the active one
   backends.py               HardwareBackend (Pi) / SimulatorBackend (browser)
-  data_sources/live.py      <- implement fetch_pages() here
+  data_sources/live.py      calls the dbus-api container, builds the pages
   data_sources/demo.py      fake data that cycles through every color state
   poller.py                 calls fetch_pages() every POLL_SECONDS
 deploy/deploy.sh            manual update script for the Pi
@@ -25,13 +26,30 @@ deploy/deploy.sh            manual update script for the Pi
 Adding a screen later: subclass `Screen`, register it in `ledwall/main.py`'s
 `ScreenManager([...])`. Switching logic goes in `manager.py`.
 
-## Data shape (what fetch_pages() returns)
+## Page dots
+
+Top right, one dot per page. The page on screen is white. Other pages light **purple** if
+they have a leave-now bus, or **red** if they have a bus at 1 min or less; purple wins if
+both. `DOT_BLINK = True` in `settings.py` makes them blink instead of staying lit.
+
+## Your buses (routes.py)
 
 ```python
-[{"name": "CITY",                       # max 7 chars
-  "buses": [{"line": "24", "minutes": 12, "walk_min": 4}]},
- {"name": "AIRPORT", "color": (255, 80, 200), "buses": [...]}]   # color optional
+STOPS = {"304": {"walk_min": 4}}                      # stop id -> walk minutes from your door
+CATEGORIES = [                                        # one page each, in order
+  {"name": "CITY", "buses": [{"line": "24", "stop": "304"}]},
+  {"name": "BEACH", "buses": [{"line": "24", "stop": "304"}]},   # same bus in 2 categories is fine
+]
 ```
+Optional: `"color": (r, g, b)` per category, `"walk_min"` per bus. Each unique line+stop
+is requested once per refresh (every `POLL_SECONDS`, in parallel). `routes.py` is checked at
+startup and by the tests, with plain-language messages if something is missing.
+
+The API runs as the `dbus-api` service in compose. Inside compose the screen reaches it at
+`http://dbus-api:3000` (`localhost` would be the led-wall container itself). Without Docker:
+`LED_API_URL=http://localhost:3000 python run.py`. Fake data instead: `LED_DATA=demo`.
+A failed request keeps the last good value for `API_REUSE_SECONDS`; if every request fails,
+the screen keeps its last snapshot and the progress line turns dim red once it is stale.
 
 ## Develop on the PC
 
@@ -43,8 +61,6 @@ Code is mounted into the container: edit, then `docker compose restart led-wall`
 No Docker needed either: `pip install -r requirements-dev.txt`, then `python run.py`
 or `pytest -k <name>`.
 
-To use your real data, implement `ledwall/data_sources/live.py` and set
-`DATA_SOURCE = "live"` in `settings.py`.
 
 ## Choosing the screen / panel test patterns
 
@@ -81,3 +97,14 @@ ssh pi@raspberrypi.local 'cd ~/led-wall && ./deploy/deploy.sh development'
 - App logs: `docker compose -f docker-compose.pi.yml logs -f`
 - Stop the display: `docker compose -f docker-compose.pi.yml down`
 - A value tweaked directly on the Pi is reset by the next deploy; copy keepers back to the PC.
+
+## Flicker (try in this order, one change at a time)
+
+1. Is it the design? Bus rows with 1 min or less and the violet page dot blink on purpose.
+   `LED_SCREEN=test`: the full-screen fill should be rock steady.
+2. Sound off + hardware pulsing: `dtparam=audio=off` in `/boot/firmware/config.txt`, reboot,
+   then `DISABLE_HARDWARE_PULSING = False` in `settings.py`.
+3. `GPIO_SLOWDOWN = 4` (then 3, 2). Long or poor ribbon cables need higher values.
+4. Reserve a CPU core: append ` isolcpus=3` to the single line in `/boot/firmware/cmdline.txt`, reboot.
+5. Less load: `FPS = 10`, and `LIMIT_REFRESH_HZ = 120`.
+6. Faster refresh: `PWM_BITS = 9` (or 8), `PWM_LSB_NANOSECONDS = 100`.

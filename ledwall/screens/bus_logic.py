@@ -37,6 +37,19 @@ class PageView:
     def has_leave_now(self):
         return any(r.state is State.LEAVE for r in self.rows)
 
+    @property
+    def has_gone(self):
+        return any(r.state is State.GONE for r in self.rows)
+
+    @property
+    def alert(self):
+        """State shown on this page's dot: LEAVE (actionable) beats GONE, else None."""
+        if self.has_leave_now:
+            return State.LEAVE
+        if self.has_gone:
+            return State.GONE
+        return None
+
 
 def classify(minutes, walk_min):
     """Urgency of a bus given minutes left and the walk to its stop."""

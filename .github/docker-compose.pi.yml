@@ -1,0 +1,20 @@
+# Raspberry Pi: real panel. Built on the Pi itself (first build takes a few minutes).
+services:
+  led-wall:
+    build:
+      context: .
+      args:
+        WITH_HARDWARE: "1"
+    privileged: true        # the panel library needs raw GPIO / /dev/mem access
+    restart: unless-stopped
+    depends_on:
+      - dbus-api
+    environment:
+      LED_BACKEND: hardware
+      LED_SCREEN: ${LED_SCREEN:-}   # empty = use settings.py
+
+  dbus-api:
+    image: ardila1108/dbus-api:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"

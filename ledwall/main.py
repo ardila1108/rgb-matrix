@@ -15,8 +15,9 @@ def make_fetch():
         from .data_sources.demo import fetch_pages
         return fetch_pages, 1.0                 # demo data changes every second
     if settings.DATA_SOURCE == "live":
-        from .data_sources.live import fetch_pages
-        return fetch_pages, settings.POLL_SECONDS
+        from .data_sources import live
+        live.check_routes()                     # fail early with a clear message
+        return live.fetch_pages, settings.POLL_SECONDS
     raise ValueError(f"unknown DATA_SOURCE: {settings.DATA_SOURCE!r}")
 
 
@@ -29,7 +30,7 @@ def main():
     poller = None
     if settings.SCREEN == "bus":              # the test screen needs no data
         fetch, interval = make_fetch()
-        poller = Poller(fetch, bus.update, interval)
+        poller = Poller(fetch, bus.update, interval, retry_interval=settings.FAILURE_RETRY_SECONDS)
         poller.start()
     log.info("running: screen=%s backend=%s data=%s", settings.SCREEN, settings.BACKEND, settings.DATA_SOURCE)
     if settings.BACKEND == "simulator":

@@ -61,15 +61,36 @@ def test_single_page_never_transitions():
     assert s._cur == "CITY" and s._trans is None
 
 
-def test_leave_now_dot_blinks_on_other_page():
+def test_leave_now_dot_is_lit_purple_on_other_page():
     s = BusScreen()
     s.update(snapshot(), now=0)
-    on = s.render(0.0)       # blink phase on (int(0*2)%2==0)
-    off = s.render(0.5)      # blink phase off
     # dots: n=2, pitch 3, x0=58 -> second dot at x=61,y=3
-    assert pixel(on, (61, 3)) == settings.COLOR_LEAVE
-    assert pixel(off, (61, 3)) == settings.COLOR_DOT_OFF
-    assert pixel(on, (58, 3)) == settings.COLOR_TEXT               # active page dot
+    for t in (0.0, 0.5):                                           # steady in both blink phases
+        img = s.render(t)
+        assert pixel(img, (61, 3)) == settings.COLOR_LEAVE
+        assert pixel(img, (58, 3)) == settings.COLOR_TEXT          # active page dot
+
+
+def test_gone_bus_lights_dot_red_and_purple_wins_over_red(monkeypatch):
+    s = BusScreen()
+    s.update([
+        {"name": "A", "buses": [{"line": "1", "minutes": 20, "walk_min": 3}]},
+        {"name": "B", "buses": [{"line": "2", "minutes": 1, "walk_min": 3}]},
+        {"name": "C", "buses": [{"line": "3", "minutes": 1, "walk_min": 3},
+                                {"line": "4", "minutes": 4, "walk_min": 4}]},
+    ], now=0)
+    img = s.render(0.0)                      # n=3 -> x0=55; dots at 55, 58, 61
+    assert pixel(img, (55, 3)) == settings.COLOR_TEXT              # active A
+    assert pixel(img, (58, 3)) == settings.COLOR_GONE              # B: red only
+    assert pixel(img, (61, 3)) == settings.COLOR_LEAVE             # C: purple beats red
+
+
+def test_dot_blink_option(monkeypatch):
+    monkeypatch.setattr(settings, "DOT_BLINK", True)
+    s = BusScreen()
+    s.update(snapshot(), now=0)
+    assert pixel(s.render(0.0), (61, 3)) == settings.COLOR_LEAVE
+    assert pixel(s.render(0.5), (61, 3)) == settings.COLOR_DOT_OFF
 
 
 def test_stale_data_turns_progress_line_red():

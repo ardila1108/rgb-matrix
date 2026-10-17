@@ -6,10 +6,10 @@ import os
 # docker-compose files set these through env vars; the defaults are for the PC.
 BACKEND = os.environ.get("LED_BACKEND") or "simulator"
 # "demo" = fake countdown data, "live" = ledwall/data_sources/live.py
-# Change the default to "live" here once fetch_pages() is implemented.
-DATA_SOURCE = os.environ.get("LED_DATA") or "demo"
+# Use LED_DATA=demo for the fake countdown data.
+DATA_SOURCE = os.environ.get("LED_DATA") or "live"
 # Which screen is shown: "bus" or "test" (panel test patterns).
-SCREEN = os.environ.get("LED_SCREEN") or "test"
+SCREEN = os.environ.get("LED_SCREEN") or "bus"
 TEST_SECONDS_PER_PATTERN = 4
 FPS = 20
 SIMULATOR_PORT = 8000
@@ -21,9 +21,22 @@ HARDWARE_MAPPING = "regular"        # "adafruit-hat" only for a real Bonnet wiri
 DISABLE_HARDWARE_PULSING = True
 GPIO_SLOWDOWN = None                # None = library default; flicker/noise -> try 2-4
 BRIGHTNESS = 80                     # 1-100
+# Flicker tuning (None = library default). See README "Flicker".
+PWM_BITS = None                     # lower (e.g. 9 or 8) = faster refresh, fewer color shades
+LIMIT_REFRESH_HZ = None             # e.g. 120: steadier timing, less flicker from load
+PWM_LSB_NANOSECONDS = None          # lower (e.g. 100) = faster refresh
+
+# --- Live data: the dbus-api container ---------------------------------------
+# Inside docker compose "dbus-api" is the service name. "localhost" would be the
+# led-wall container itself. Without Docker use LED_API_URL=http://localhost:3000
+API_BASE_URL = os.environ.get("LED_API_URL") or "http://dbus-api:3000"
+API_TIMEOUT_SECONDS = 4
+API_MAX_WORKERS = 8                 # parallel requests per refresh
+API_REUSE_SECONDS = 90              # a failed request keeps its last good value this long
 
 # --- Data ------------------------------------------------------------------
-POLL_SECONDS = 20                   # how often live.fetch_pages() is called
+POLL_SECONDS = 20                   # how often the data source is asked
+FAILURE_RETRY_SECONDS = 3           # after a failed fetch, retry this soon (API still starting)
 LOCAL_COUNTDOWN = True              # tick minutes down between API refreshes
 STALE_AFTER_SECONDS = 120           # no fresh data for this long -> red progress line
 
@@ -32,6 +45,7 @@ DWELL_SECONDS = 5
 TRANSITION_SECONDS = 0.3
 MAX_PAGE_NAME_CHARS = 7             # header fits 7 chars
 MAX_LINE_CHARS = 3                  # badge fits 3 chars
+DOT_BLINK = False                   # page dots: False = steady color, True = blink
 
 # --- Bus screen: urgency rules (slack = minutes left - walk minutes) --------
 GONE_MINUTES = 1                    # this many minutes or less -> red, blinking

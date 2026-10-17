@@ -10,6 +10,8 @@ ARG PILLOW_REF=11.3.0
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 WORKDIR /app
 
+# 1) System libraries from git first: slow to build and rarely changes, so it
+#    stays cached when only requirements.txt or the code changes.
 RUN if [ "$WITH_HARDWARE" = "1" ]; then \
       set -eux; \
       apt-get update; \
@@ -22,8 +24,10 @@ RUN if [ "$WITH_HARDWARE" = "1" ]; then \
       rm -rf /tmp/pillow /tmp/rgbmatrix; \
     fi
 
+# 2) Python requirements (Pillow is pinned to the version the bindings were built against).
 COPY requirements.txt requirements-dev.txt ./
 RUN pip install --no-cache-dir -r requirements-dev.txt
 
+# 3) Your code.
 COPY . .
 CMD ["python", "run.py"]

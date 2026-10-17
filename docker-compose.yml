@@ -8,9 +8,16 @@ services:
       - "8000:8000"
     volumes:
       - .:/app            # edit code on the host, then restart the container
+    depends_on:
+      - dbus-api
     environment:
       LED_BACKEND: simulator
       LED_SCREEN: ${LED_SCREEN:-}   # empty = use settings.py
+
+  dbus-api:
+    image: ardila1108/dbus-api:latest
+    ports:
+      - "3000:3000"
 
   test:
     build: .

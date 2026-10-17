@@ -52,7 +52,7 @@ class BusScreen(Screen):
         with self._lock:
             pages, received = self._pages, self._received
         if received is None:
-            return self._message("NO DATA")
+            return self._message("LOADING")
         age = now - received
         views = prepare_pages(pages, age)
         if not views:
@@ -117,10 +117,11 @@ class BusScreen(Screen):
         pitch, size = (3, 2) if n <= 5 else (2, 1)
         x0, y0 = W - n * pitch, 3 if size == 2 else 4
         for i in range(n):
+            alert = views[i].alert
             if i == idx:
                 c = settings.COLOR_TEXT
-            elif views[i].has_leave_now and blink:
-                c = settings.COLOR_LEAVE
+            elif alert is not None and (blink or not settings.DOT_BLINK):
+                c = colors[alert]
             else:
                 c = settings.COLOR_DOT_OFF
             x = x0 + i * pitch

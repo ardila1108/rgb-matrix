@@ -27,10 +27,17 @@ class HardwareBackend:
         o.brightness = settings.BRIGHTNESS
         if settings.GPIO_SLOWDOWN is not None:
             o.gpio_slowdown = settings.GPIO_SLOWDOWN
+        for attr, value in (("pwm_bits", settings.PWM_BITS),
+                            ("limit_refresh_rate_hz", settings.LIMIT_REFRESH_HZ),
+                            ("pwm_lsb_nanoseconds", settings.PWM_LSB_NANOSECONDS)):
+            if value is not None:
+                setattr(o, attr, value)
         o.drop_privileges = False   # we run as root inside the container
-        log.info("matrix: %dx%d mapping=%s pulsing_disabled=%s slowdown=%s brightness=%s",
+        log.info("matrix: %dx%d mapping=%s pulsing_disabled=%s slowdown=%s brightness=%s "
+                 "pwm_bits=%s refresh_limit=%s lsb_ns=%s fps=%s",
                  o.rows, o.cols, o.hardware_mapping, o.disable_hardware_pulsing,
-                 settings.GPIO_SLOWDOWN, o.brightness)
+                 settings.GPIO_SLOWDOWN, o.brightness, settings.PWM_BITS,
+                 settings.LIMIT_REFRESH_HZ, settings.PWM_LSB_NANOSECONDS, settings.FPS)
         self._matrix = RGBMatrix(options=o)
         self._canvas = self._matrix.CreateFrameCanvas()
 
