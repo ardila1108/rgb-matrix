@@ -19,7 +19,7 @@ ROWS = 64
 COLS = 64
 HARDWARE_MAPPING = "regular"        # "adafruit-hat" only for a real Bonnet wiring
 DISABLE_HARDWARE_PULSING = True
-GPIO_SLOWDOWN = None                # None = library default; flicker/noise -> try 2-4
+GPIO_SLOWDOWN = 4                # None = library default; flicker/noise -> try 2-4
 BRIGHTNESS = 80                     # 1-100
 # Flicker tuning (None = library default). See README "Flicker".
 PWM_BITS = None                     # lower (e.g. 9 or 8) = faster refresh, fewer color shades
@@ -41,7 +41,7 @@ LOCAL_COUNTDOWN = True              # tick minutes down between API refreshes
 STALE_AFTER_SECONDS = 120           # no fresh data for this long -> red progress line
 
 # --- Bus screen: paging ----------------------------------------------------
-DWELL_SECONDS = 5
+DWELL_SECONDS = 3
 TRANSITION_SECONDS = 0.3
 MAX_PAGE_NAME_CHARS = 7             # header fits 7 chars
 MAX_LINE_CHARS = 3                  # badge fits 3 chars

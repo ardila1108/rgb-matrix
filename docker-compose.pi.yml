@@ -14,7 +14,7 @@ services:
       LED_SCREEN: ${LED_SCREEN:-}   # empty = use settings.py
 
   dbus-api:
-    image: ardila1108/dbus-api:latest
+    build: ./dbus-api
     restart: unless-stopped
     ports:
       - "3000:3000"
