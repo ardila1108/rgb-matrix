@@ -37,7 +37,7 @@ API_REUSE_SECONDS = 90              # a failed request keeps its last good value
 # --- Data ------------------------------------------------------------------
 POLL_SECONDS = 20                   # how often the data source is asked
 FAILURE_RETRY_SECONDS = 3           # after a failed fetch, retry this soon (API still starting)
-LOCAL_COUNTDOWN = True              # tick minutes down between API refreshes
+LOCAL_COUNTDOWN = False              # tick minutes down between API refreshes
 STALE_AFTER_SECONDS = 120           # no fresh data for this long -> red progress line
 
 # --- Bus screen: paging ----------------------------------------------------

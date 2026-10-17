@@ -1,13 +1,13 @@
 FROM node:18-alpine
 
-# Set environment variable to skip chromium download during npm install
+# Tell Puppeteer NOT to download its own Chrome binary
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+# Tell Puppeteer WHERE to find the system-installed Chromium on Alpine
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 WORKDIR /app
 
-COPY package*.json ./
-
-# Install alpine-compatible chromium and its dependencies
+# Install alpine-compatible chromium and its dependencies BEFORE npm install
 RUN apk add --no-cache \
     chromium \
     nss \
@@ -15,6 +15,8 @@ RUN apk add --no-cache \
     harfbuzz \
     ca-certificates \
     ttf-freefont
+
+COPY package*.json ./
 
 RUN npm install
 

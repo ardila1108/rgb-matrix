@@ -5,8 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon --ext js index.js",
-    "postinstall": "npx puppeteer browsers install chrome"
+    "dev": "nodemon --ext js index.js"
   },
   "keywords": [
     "dbus",
