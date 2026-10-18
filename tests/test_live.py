@@ -7,14 +7,16 @@ from ledwall.data_sources.live import LiveSource, parse_minutes, validate_routes
 
 
 class Resp:
-    def __init__(self, data=None, status=200):
-        self._data, self.status = data, status
+    def __init__(self, data=None, status=200, error=None):
+        self._data, self.status_code, self._error = data, status, error
 
     def raise_for_status(self):
-        if self.status >= 400:
-            raise requests.HTTPError(f"HTTP {self.status}")
+        if self.status_code >= 400:
+            raise requests.HTTPError(f"HTTP {self.status_code}")
 
     def json(self):
+        if self._error is not None:
+            return {"success": False, "error": {"message": self._error}}
         return {"data": self._data}
 
 
@@ -122,3 +124,40 @@ def test_validation_catches_common_mistakes():
     assert "longer than 7" in text and "missing 'name'" in text
     assert "needs both" in text and "stop '999'" in text and "'ABCD'" in text
     assert validate_routes([], STOPS) == ["CATEGORIES is empty"]
+
+
+# -- "no bus coming" is an answer, not an outage -------------------------------
+NO_BUS = lambda: Resp(status=404, error="Bus time not found")
+
+
+def test_bus_time_not_found_means_no_bus_not_outage():
+    src, _ = source({("24", "304"): NO_BUS(), ("9", "118"): NO_BUS()})
+    pages = src.fetch_pages()                          # must not raise
+    assert [p["buses"] for p in pages] == [[], []]
+
+
+def test_no_bus_clears_the_reuse_cache():
+    t = [0.0]
+    src, api = source({("24", "304"): data(5), ("9", "118"): data(8)}, clock=lambda: t[0])
+    src.fetch_pages()
+    api.answers[("24", "304")] = NO_BUS()
+    t[0] = 10.0
+    pages = src.fetch_pages()
+    assert [b["line"] for b in pages[0]["buses"]] == ["9"]
+
+
+def test_unknown_stop_is_reported_once_and_skipped(caplog):
+    src, _ = source({("24", "304"): Resp(status=404, error="Stop with ID 304 not found"),
+                     ("9", "118"): data(8)})
+    with caplog.at_level("WARNING"):
+        src.fetch_pages()
+        src.fetch_pages()
+    warnings = [r for r in caplog.records if "check routes.py" in r.getMessage()]
+    assert len(warnings) == 1
+
+
+def test_rate_limit_429_is_a_failure():
+    src, _ = source({("24", "304"): Resp(status=429, error="Too many requests"),
+                     ("9", "118"): Resp(status=429, error="Too many requests")})
+    with pytest.raises(RuntimeError):
+        src.fetch_pages()

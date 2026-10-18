@@ -13,9 +13,21 @@ services:
     environment:
       LED_BACKEND: simulator
       LED_SCREEN: ${LED_SCREEN:-}   # empty = use settings.py
+      LED_DATA: ${LED_DATA:-}       # demo | live (empty = settings.py)
+      LED_API_URL: ${LED_API_URL:-} # empty = http://dbus-api:3000
 
   dbus-api:
-    build: ./dbus-api
+    image: ardila1108/dbus-api:latest
+    init: true                    # reaps leftover Chrome processes
+    shm_size: "256mb"             # Docker's default 64 MB makes Chrome hang
+    environment:
+      RATE_LIMIT_MAX: "100000"    # default is 100 requests / 15 min: the screen asks far more
+      NODE_ENV: production
+      LOG_LEVEL: info
+      WARM_LINES: "19,36,24,27,31,35"          # the lines used in routes.py, fills the caches at startup
+    # Keep the cache across restarts: use the folder your Dockerfile's WORKDIR + /cache
+    # volumes:
+    #   - dbus-cache:/app/cache
     ports:
       - "3000:3000"
 

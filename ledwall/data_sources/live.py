@@ -60,6 +60,13 @@ def parse_minutes(data):
     return max(0, int(round(minutes)))
 
 
+def _error_message(response):
+    try:
+        return str(response.json()["error"]["message"])
+    except Exception:
+        return ""
+
+
 class LiveSource:
     def __init__(self, categories=None, stops=None, get=None, clock=time.monotonic):
         self.categories = routes.CATEGORIES if categories is None else categories
@@ -67,10 +74,20 @@ class LiveSource:
         self._get = get or requests.Session().get
         self._clock = clock
         self._last_good = {}          # (line, stop) -> (minutes, time)
+        self._warned = set()          # (line, stop) pairs already reported as unknown
 
     def _request(self, line, stop):
         url = f"{settings.API_BASE_URL}/api/v1/lines/{line}/{stop}"
-        response = self._get(url, timeout=settings.API_TIMEOUT_SECONDS)
+        response = self._get(url, timeout=(settings.API_CONNECT_TIMEOUT_SECONDS,
+                                            settings.API_TIMEOUT_SECONDS))
+        if response.status_code == 404:
+            # The API answers 404 "Bus time not found" when no bus is coming. That is
+            # an answer, not an outage. Other 404s mean line/stop codes that don't exist.
+            message = _error_message(response)
+            if "bus time not found" not in message.lower() and (line, stop) not in self._warned:
+                self._warned.add((line, stop))
+                log.warning("line %s stop %s: %s (check routes.py)", line, stop, message)
+            return None
         response.raise_for_status()
         return parse_minutes(response.json()["data"])
 

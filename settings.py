@@ -30,13 +30,14 @@ PWM_LSB_NANOSECONDS = None          # lower (e.g. 100) = faster refresh
 # Inside docker compose "dbus-api" is the service name. "localhost" would be the
 # led-wall container itself. Without Docker use LED_API_URL=http://localhost:3000
 API_BASE_URL = os.environ.get("LED_API_URL") or "http://dbus-api:3000"
-API_TIMEOUT_SECONDS = 4
-API_MAX_WORKERS = 8                 # parallel requests per refresh
+API_CONNECT_TIMEOUT_SECONDS = 3     # API container not reachable: fail fast and retry
+API_TIMEOUT_SECONDS = 20            # max wait for an answer (the API scrapes a website, so it is slow)
+API_MAX_WORKERS = 2                 # parallel requests per refresh; keep low, the API scrapes per request
 API_REUSE_SECONDS = 90              # a failed request keeps its last good value this long
 
 # --- Data ------------------------------------------------------------------
 POLL_SECONDS = 20                   # how often the data source is asked
-FAILURE_RETRY_SECONDS = 3           # after a failed fetch, retry this soon (API still starting)
+FAILURE_RETRY_SECONDS = 3           # first retry after a failed fetch; doubles up to POLL_SECONDS
 LOCAL_COUNTDOWN = False              # tick minutes down between API refreshes
 STALE_AFTER_SECONDS = 120           # no fresh data for this long -> red progress line
 
