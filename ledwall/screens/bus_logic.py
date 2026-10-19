@@ -43,11 +43,12 @@ class PageView:
 
     @property
     def alert(self):
-        """State shown on this page's dot: LEAVE (actionable) beats GONE, else None."""
-        if self.has_leave_now:
-            return State.LEAVE
-        if self.has_gone:
-            return State.GONE
+        """State shown on this page's dot: the first of settings.DOT_PRIORITY present, else None."""
+        present = {r.state for r in self.rows}
+        for name in settings.DOT_PRIORITY:
+            state = State(name)
+            if state in present:
+                return state
         return None
 
 

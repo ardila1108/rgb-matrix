@@ -25,6 +25,11 @@ class ScreenManager:
     def get(self, name: str) -> Screen:
         return self._screens[name]
 
+    def describe(self, names):
+        """Name, label and icon of the given screens (for the phone page)."""
+        return [{"name": n, "label": self._screens[n].label, "icon": self._screens[n].icon}
+                for n in names if n in self._screens]
+
     def set_active(self, name: str) -> None:
         if name not in self._screens:
             raise KeyError(f"unknown screen: {name}")

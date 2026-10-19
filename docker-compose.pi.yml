@@ -6,6 +6,8 @@ services:
       args:
         WITH_HARDWARE: "1"
     privileged: true        # the panel library needs raw GPIO / /dev/mem access
+    ports:
+      - "8080:8080"         # phone page: http://<pi-ip>:8080
     restart: unless-stopped
     depends_on:
       - dbus-api
@@ -23,7 +25,7 @@ services:
       RATE_LIMIT_MAX: "100000"    # default is 100 requests / 15 min: the screen asks far more
       NODE_ENV: production
       LOG_LEVEL: info
-      WARM_LINES: "19,36,24,27,31,35"           # the lines used in routes.py, fills the caches at startup
+      WARM_LINES: "24,9"          # the lines used in routes.py, fills the caches at startup
     # Keep the cache across restarts: use the folder your Dockerfile's WORKDIR + /cache
     # volumes:
     #   - dbus-cache:/app/cache

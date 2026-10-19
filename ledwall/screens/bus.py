@@ -31,6 +31,8 @@ class BusScreen(Screen):
     """Pages of buses grouped by destination, with walk-time-aware colors."""
 
     name = "bus"
+    label = "Buses"
+    icon = "🚌"
 
     def __init__(self):
         self._lock = threading.Lock()

@@ -17,6 +17,8 @@ FILL_COLORS = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 255)]
 class TestScreen(Screen):
     __test__ = False          # not a pytest class
     name = "test"
+    label = "Test patterns"
+    icon = "🧪"
     PATTERNS = ("bars", "grid", "scan", "fill")
 
     def update(self, data=None):

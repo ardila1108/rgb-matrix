@@ -9,7 +9,10 @@ BACKEND = os.environ.get("LED_BACKEND") or "simulator"
 # Use LED_DATA=demo for the fake countdown data.
 DATA_SOURCE = os.environ.get("LED_DATA") or "live"
 # Which screen is shown: "bus" or "test" (panel test patterns).
-SCREEN = os.environ.get("LED_SCREEN") or "bus"
+SCREEN = os.environ.get("LED_SCREEN") or "clock"      # screen shown at startup
+MENU_SCREENS = ("bus", "clock")     # buttons on the phone page ("test" is only for LED_SCREEN=test)
+CONTROL_PORT = 8080                 # phone page: http://<pi-ip>:8080
+TIMEZONE = "Europe/Madrid"          # clock screen
 TEST_SECONDS_PER_PATTERN = 4
 FPS = 20
 SIMULATOR_PORT = 8000
@@ -47,9 +50,12 @@ TRANSITION_SECONDS = 0.3
 MAX_PAGE_NAME_CHARS = 7             # header fits 7 chars
 MAX_LINE_CHARS = 3                  # badge fits 3 chars
 DOT_BLINK = False                   # page dots: False = steady color, True = blink
+# Page dots light with the first state in this list that a page has a bus in.
+# Names: "leave" (purple), "ready" (amber), "run" (orange), "gone" (red), "relax" (green).
+DOT_PRIORITY = ("leave", "ready", "gone")
+MAX_MINUTES_SHOWN = 60              # buses further away than this are hidden (display max: 99)
 
 # --- Bus screen: urgency rules (slack = minutes left - walk minutes) --------
-MAX_MINUTES_SHOWN = 60              # buses further away than this are hidden (display max: 99)
 GONE_MINUTES = 1                    # this many minutes or less -> red, blinking
 LEAVE_NOW_SLACK = (0, 1)            # violet: last chance without running
 GET_READY_SLACK = (2, 3)            # amber

@@ -115,3 +115,33 @@ def test_manager_switches_and_rejects_unknown():
     assert m.active == "bus"
     with pytest.raises(KeyError):
         m.set_active("weather")
+
+
+def test_amber_bus_lights_the_page_dot_amber_and_priority_is_leave_ready_gone():
+    s = BusScreen()
+    s.update([
+        {"name": "A", "buses": [{"line": "1", "minutes": 30, "walk_min": 3}]},      # relax
+        {"name": "B", "buses": [{"line": "2", "minutes": 6, "walk_min": 4}]},       # slack 2: amber
+        {"name": "C", "buses": [{"line": "3", "minutes": 6, "walk_min": 4},
+                                {"line": "4", "minutes": 1, "walk_min": 3}]},       # amber + red
+        {"name": "D", "buses": [{"line": "5", "minutes": 4, "walk_min": 4},
+                                {"line": "6", "minutes": 6, "walk_min": 4}]},       # purple + amber
+    ], now=0)
+    img = s.render(0.0)                       # n=4 -> x0=52; dots at 52, 55, 58, 61
+    assert pixel(img, (52, 3)) == settings.COLOR_TEXT      # active A
+    assert pixel(img, (55, 3)) == settings.COLOR_READY     # B: amber
+    assert pixel(img, (58, 3)) == settings.COLOR_READY     # C: amber beats red
+    assert pixel(img, (61, 3)) == settings.COLOR_LEAVE     # D: purple beats amber
+
+
+def test_dot_priority_is_a_setting(monkeypatch):
+    monkeypatch.setattr(settings, "DOT_PRIORITY", ("run",))
+    s = BusScreen()
+    s.update([
+        {"name": "A", "buses": [{"line": "1", "minutes": 30, "walk_min": 3}]},
+        {"name": "B", "buses": [{"line": "2", "minutes": 3, "walk_min": 4}]},       # slack -1: run
+        {"name": "C", "buses": [{"line": "3", "minutes": 4, "walk_min": 4}]},       # purple: not listed
+    ], now=0)
+    img = s.render(0.0)                       # n=3 -> x0=55
+    assert pixel(img, (58, 3)) == settings.COLOR_RUN
+    assert pixel(img, (61, 3)) == settings.COLOR_DOT_OFF

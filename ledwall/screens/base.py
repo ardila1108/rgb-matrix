@@ -12,6 +12,9 @@ class Screen(ABC):
 
     #: short unique id used by the ScreenManager, e.g. "bus"
     name: str = "screen"
+    #: how the screen is called on the phone page
+    label: str = "Screen"
+    icon: str = "▫️"
 
     @abstractmethod
     def update(self, data) -> None:

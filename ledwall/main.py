@@ -3,9 +3,10 @@ import time
 
 import settings
 from .backends import make_backend
+from .control import ControlServer
 from .manager import ScreenManager
 from .poller import Poller
-from .screens import BusScreen, TestScreen
+from .screens import BusScreen, ClockScreen, TestScreen
 
 log = logging.getLogger("ledwall")
 
@@ -25,14 +26,18 @@ def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     backend = make_backend()
     bus = BusScreen()
-    manager = ScreenManager([bus, TestScreen()], active=settings.SCREEN)
+    manager = ScreenManager([bus, ClockScreen(), TestScreen()], active=settings.SCREEN)
 
-    poller = None
-    if settings.SCREEN == "bus":              # the test screen needs no data
-        fetch, interval = make_fetch()
-        poller = Poller(fetch, bus.update, interval, retry_interval=settings.FAILURE_RETRY_SECONDS)
-        poller.start()
+    # The bus screen is always fed, so it is up to date whenever you switch to it.
+    fetch, interval = make_fetch()
+    poller = Poller(fetch, bus.update, interval, retry_interval=settings.FAILURE_RETRY_SECONDS)
+    poller.start()
+
+    control = ControlServer(manager, settings.MENU_SCREENS, settings.CONTROL_PORT)
+    control.start()
+
     log.info("running: screen=%s backend=%s data=%s", settings.SCREEN, settings.BACKEND, settings.DATA_SOURCE)
+    log.info("phone page at http://<this-machine>:%d", settings.CONTROL_PORT)
     if settings.BACKEND == "simulator":
         log.info("preview at http://localhost:%d", settings.SIMULATOR_PORT)
 
@@ -47,6 +52,7 @@ def main():
     finally:
         if poller:
             poller.stop()
+        control.stop()
         backend.close()
 
 

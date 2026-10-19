@@ -14,7 +14,9 @@ ledwall/
   screens/base.py           Screen interface (update(data), render(now) -> image)
   screens/bus.py            BusScreen: pages, header, dots, rows, transitions
   screens/bus_logic.py      pure logic: classify(), prepare_pages()
+  screens/clock.py          ClockScreen: time and date in Spain
   screens/test.py           TestScreen: panel test patterns
+  control.py                phone page + API to switch screens
   manager.py                ScreenManager: holds screens, picks the active one
   backends.py               HardwareBackend (Pi) / SimulatorBackend (browser)
   data_sources/live.py      calls the dbus-api container, builds the pages
@@ -26,11 +28,21 @@ deploy/deploy.sh            manual update script for the Pi
 Adding a screen later: subclass `Screen`, register it in `ledwall/main.py`'s
 `ScreenManager([...])`. Switching logic goes in `manager.py`.
 
+## Switching screens from your phone
+
+Open `http://<pi-ip>:8080` (on your PC: `http://localhost:8080`) on the same Wi-Fi and tap a
+screen. Give the Pi a fixed IP in your router so the address does not change. Add the page
+to your phone's home screen to use it like an app. There is no login: keep the port on your
+home network only. After a restart the panel starts on `SCREEN` from `settings.py`.
+Buttons shown: `MENU_SCREENS`. Clock timezone: `TIMEZONE`.
+
 ## Page dots
 
-Top right, one dot per page. The page on screen is white. Other pages light **purple** if
-they have a leave-now bus, or **red** if they have a bus at 1 min or less; purple wins if
-both. `DOT_BLINK = True` in `settings.py` makes them blink instead of staying lit.
+Top right, one dot per page. The page on screen is white. Other pages light with the first
+state in `DOT_PRIORITY` (`settings.py`) that they have a bus in. Default order: **purple**
+(leave now), **amber** (get ready), **red** (gone). Add `"run"` (orange) or `"relax"`
+(green) to the list if you want those too. `DOT_BLINK = True` makes the dots blink instead
+of staying lit.
 
 ## Your buses (routes.py)
 
@@ -41,6 +53,8 @@ CATEGORIES = [                                        # one page each, in order
   {"name": "BEACH", "buses": [{"line": "24", "stop": "304"}]},   # same bus in 2 categories is fine
 ]
 ```
+Buses further away than `MAX_MINUTES_SHOWN` (default 60, in `settings.py`) are hidden, and a page
+with no buses left is skipped.
 Optional: `"color": (r, g, b)` per category, `"walk_min"` per bus. Each unique line+stop
 is requested once per refresh (every `POLL_SECONDS`, in parallel). `routes.py` is checked at
 startup and by the tests, with plain-language messages if something is missing.
