@@ -49,6 +49,7 @@ MAX_LINE_CHARS = 3                  # badge fits 3 chars
 DOT_BLINK = False                   # page dots: False = steady color, True = blink
 
 # --- Bus screen: urgency rules (slack = minutes left - walk minutes) --------
+MAX_MINUTES_SHOWN = 60              # buses further away than this are hidden (display max: 99)
 GONE_MINUTES = 1                    # this many minutes or less -> red, blinking
 LEAVE_NOW_SLACK = (0, 1)            # violet: last chance without running
 GET_READY_SLACK = (2, 3)            # amber

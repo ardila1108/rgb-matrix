@@ -76,10 +76,34 @@ def test_local_countdown(monkeypatch):
     assert prepare_pages(p, age_seconds=125)[0].rows[0].minutes == 10
 
 
-def test_minutes_never_negative_and_capped_at_99():
-    p = [page("A", ("1", 1, 3), ("2", 250, 3))]
-    rows = prepare_pages(p, age_seconds=600)[0].rows
-    assert rows[0].minutes == 0 and rows[1].minutes == 99
+def test_minutes_never_negative():
+    rows = prepare_pages([page("A", ("1", 1, 3))], age_seconds=600)[0].rows
+    assert rows[0].minutes == 0
+
+
+def test_buses_further_away_than_the_limit_are_hidden():
+    p = [page("A", ("1", 60, 3), ("2", 61, 3), ("3", 90, 3))]
+    assert [r.line for r in prepare_pages(p)[0].rows] == ["1"]
+
+
+def test_limit_is_a_setting_and_cannot_exceed_two_digits(monkeypatch):
+    monkeypatch.setattr(settings, "MAX_MINUTES_SHOWN", 30)
+    p = [page("A", ("1", 30, 3), ("2", 31, 3))]
+    assert [r.line for r in prepare_pages(p)[0].rows] == ["1"]
+    monkeypatch.setattr(settings, "MAX_MINUTES_SHOWN", 500)
+    p = [page("A", ("1", 99, 3), ("2", 100, 3))]
+    assert [r.line for r in prepare_pages(p)[0].rows] == ["1"]
+
+
+def test_limit_applies_after_the_local_countdown():
+    p = [page("A", ("1", 62, 3))]
+    assert prepare_pages(p, age_seconds=0) == []
+    assert prepare_pages(p, age_seconds=125)[0].rows[0].minutes == 60
+
+
+def test_page_with_only_far_buses_is_skipped():
+    views = prepare_pages([page("A", ("1", 80, 3)), page("B", ("2", 10, 3))])
+    assert [v.name for v in views] == ["B"]
 
 
 def test_leave_now_flag():

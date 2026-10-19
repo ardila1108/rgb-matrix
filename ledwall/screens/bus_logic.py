@@ -8,7 +8,7 @@ import settings
 log = logging.getLogger(__name__)
 
 ROWS_PER_PAGE = 3      # fixed by the 64x64 layout
-MAX_MINUTES_SHOWN = 99
+MAX_DISPLAYABLE = 99   # two digits on the panel
 
 
 class State(Enum):
@@ -73,9 +73,11 @@ def prepare_pages(pages, age_seconds=0.0):
     pages: [{"name": "CITY", "color": (r,g,b) optional,
              "buses": [{"line": "24", "minutes": 12, "walk_min": 4}, ...]}, ...]
     age_seconds: how old the snapshot is (for the local countdown).
-    Empty pages are dropped; each page keeps its soonest 3 buses.
+    Buses further away than settings.MAX_MINUTES_SHOWN are hidden. Empty pages are
+    dropped; each page keeps its soonest 3 buses.
     """
     elapsed = int(age_seconds // 60) if settings.LOCAL_COUNTDOWN else 0
+    limit = min(settings.MAX_MINUTES_SHOWN, MAX_DISPLAYABLE)
     views = []
     for i, page in enumerate(pages or []):
         if not isinstance(page, dict):
@@ -90,7 +92,9 @@ def prepare_pages(pages, age_seconds=0.0):
             except (KeyError, TypeError, ValueError, AttributeError):
                 log.warning("skipping malformed bus entry: %r", bus)
                 continue
-            rows.append(Row(line, min(minutes, MAX_MINUTES_SHOWN), classify(minutes, walk)))
+            if minutes > limit:
+                continue                      # too far away to be interesting
+            rows.append(Row(line, minutes, classify(minutes, walk)))
         if not rows:
             continue
         rows.sort(key=lambda r: r.minutes)
