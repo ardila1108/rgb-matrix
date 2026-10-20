@@ -15,6 +15,8 @@ class Screen(ABC):
     #: how the screen is called on the phone page
     label: str = "Screen"
     icon: str = "▫️"
+    #: optional phone page that edits this screen (opened after tapping its button)
+    page = None
 
     @abstractmethod
     def update(self, data) -> None:

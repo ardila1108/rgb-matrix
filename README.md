@@ -15,7 +15,9 @@ ledwall/
   screens/bus.py            BusScreen: pages, header, dots, rows, transitions
   screens/bus_logic.py      pure logic: classify(), prepare_pages()
   screens/clock.py          ClockScreen: time and date in Spain
+  screens/freestyle.py      FreestyleScreen: a canvas you sketch on from the phone
   screens/test.py           TestScreen: panel test patterns
+  draw_page.py              the sketch page (/draw)
   control.py                phone page + API to switch screens
   manager.py                ScreenManager: holds screens, picks the active one
   backends.py               HardwareBackend (Pi) / SimulatorBackend (browser)
@@ -34,7 +36,9 @@ Open `http://<pi-ip>:8080` (on your PC: `http://localhost:8080`) on the same Wi-
 screen. Give the Pi a fixed IP in your router so the address does not change. Add the page
 to your phone's home screen to use it like an app. There is no login: keep the port on your
 home network only. After a restart the panel starts on `SCREEN` from `settings.py`.
-Buttons shown: `MENU_SCREENS`. Clock timezone: `TIMEZONE`.
+Buttons shown: `MENU_SCREENS`. The **Draw** button opens the sketch page: pen, eraser, fill,
+brush sizes, colors, undo, clear. Strokes appear on the panel as you draw, and the sketch is
+kept in `DATA_DIR` (a Docker volume on the Pi), so it survives restarts and deploys. Clock timezone: `TIMEZONE`.
 
 ## Page dots
 

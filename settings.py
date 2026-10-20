@@ -10,7 +10,8 @@ BACKEND = os.environ.get("LED_BACKEND") or "simulator"
 DATA_SOURCE = os.environ.get("LED_DATA") or "live"
 # Which screen is shown: "bus" or "test" (panel test patterns).
 SCREEN = os.environ.get("LED_SCREEN") or "clock"      # screen shown at startup
-MENU_SCREENS = ("bus", "clock")     # buttons on the phone page ("test" is only for LED_SCREEN=test)
+MENU_SCREENS = ("bus", "clock", "freestyle")   # buttons on the phone page ("test" is only for LED_SCREEN=test)
+DATA_DIR = os.environ.get("LED_DATA_DIR") or "data"   # where the sketch is kept between restarts
 CONTROL_PORT = 8080                 # phone page: http://<pi-ip>:8080
 TIMEZONE = "Europe/Madrid"          # clock screen
 TEST_SECONDS_PER_PATTERN = 4

@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 
 import settings
@@ -6,7 +7,7 @@ from .backends import make_backend
 from .control import ControlServer
 from .manager import ScreenManager
 from .poller import Poller
-from .screens import BusScreen, ClockScreen, TestScreen
+from .screens import BusScreen, ClockScreen, FreestyleScreen, TestScreen
 
 log = logging.getLogger("ledwall")
 
@@ -26,7 +27,8 @@ def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     backend = make_backend()
     bus = BusScreen()
-    manager = ScreenManager([bus, ClockScreen(), TestScreen()], active=settings.SCREEN)
+    sketch = FreestyleScreen(path=os.path.join(settings.DATA_DIR, "freestyle", "canvas.png"))
+    manager = ScreenManager([bus, ClockScreen(), sketch, TestScreen()], active=settings.SCREEN)
 
     # The bus screen is always fed, so it is up to date whenever you switch to it.
     fetch, interval = make_fetch()

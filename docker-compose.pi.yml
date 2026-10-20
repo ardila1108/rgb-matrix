@@ -8,11 +8,14 @@ services:
     privileged: true        # the panel library needs raw GPIO / /dev/mem access
     ports:
       - "8080:8080"         # phone page: http://<pi-ip>:8080
+    volumes:
+      - led-data:/app/data  # keeps your sketch across restarts and deploys
     restart: unless-stopped
     depends_on:
       - dbus-api
     environment:
       LED_BACKEND: hardware
+      LED_DATA_DIR: /app/data
       LED_SCREEN: ${LED_SCREEN:-}   # empty = use settings.py
       LED_DATA: ${LED_DATA:-}       # demo | live (empty = settings.py)
       LED_API_URL: ${LED_API_URL:-} # empty = http://dbus-api:3000
@@ -32,3 +35,6 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+
+volumes:
+  led-data:

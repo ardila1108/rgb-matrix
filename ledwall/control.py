@@ -1,16 +1,61 @@
 """Phone control page: switch screens from a browser on your home network.
 
 GET  /             the page
-GET  /api/state    {"active": "bus", "screens": [{"name", "label", "icon"}, ...]}
+GET  /api/state    {"active": "bus", "screens": [{"name", "label", "icon", "page"?}, ...]}
 POST /api/screen   {"name": "clock"}  -> same JSON as /api/state
+
+Sketching (screen "freestyle"):
+GET  /draw                  the sketch page
+GET  /api/draw/canvas.png   the current 64x64 canvas
+POST /api/draw              {"stroke": 7, "pixels": [[x, y, "#rrggbb"], ...]}
+POST /api/draw/fill         {"x": 3, "y": 4, "color": "#rrggbb"}
+POST /api/draw/clear        {}
+POST /api/draw/undo         {}
 No login: keep this port on your home network only.
 """
 import json
 import logging
+import re
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from .draw_page import DRAW_PAGE
+
 log = logging.getLogger(__name__)
+
+MAX_BODY_BYTES = 128 * 1024
+MAX_PIXELS_PER_REQUEST = 4096
+GRID = 64
+_HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+class BadRequest(Exception):
+    pass
+
+
+def parse_color(value):
+    if not isinstance(value, str) or not _HEX.match(value):
+        raise BadRequest(f"color must look like #ff8800, got {value!r}")
+    return tuple(int(value[i:i + 2], 16) for i in (1, 3, 5))
+
+
+def parse_cell(x, y):
+    if not all(isinstance(v, int) and not isinstance(v, bool) for v in (x, y)) \
+            or not (0 <= x < GRID and 0 <= y < GRID):
+        raise BadRequest(f"x and y must be whole numbers from 0 to {GRID - 1}")
+    return x, y
+
+
+def parse_pixels(raw):
+    if not isinstance(raw, list) or len(raw) > MAX_PIXELS_PER_REQUEST:
+        raise BadRequest(f"pixels must be a list of at most {MAX_PIXELS_PER_REQUEST} entries")
+    pixels = []
+    for item in raw:
+        if not isinstance(item, (list, tuple)) or len(item) != 3:
+            raise BadRequest("each pixel must be [x, y, \"#rrggbb\"]")
+        x, y = parse_cell(item[0], item[1])
+        pixels.append((x, y, parse_color(item[2])))
+    return pixels
 
 PAGE = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
@@ -54,7 +99,7 @@ function draw(){
   state.screens.forEach(s=>{
     const b=el('button','card'+(s.name===state.active?' on':''));
     b.append(el('span','icon',s.icon),el('span','label',s.label),el('span','tag',s.name===state.active?'On screen':''));
-    b.onclick=()=>pick(s.name);
+    b.onclick=()=>pick(s);
     grid.appendChild(b);
   });
 }
@@ -63,10 +108,11 @@ async function load(){
   try{const r=await fetch('/api/state',{cache:'no-store'});if(!r.ok)throw 0;state=await r.json();draw();ok(true)}
   catch(e){ok(false)}
 }
-async function pick(name){
+async function pick(s){
   try{
-    const r=await fetch('/api/screen',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+    const r=await fetch('/api/screen',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:s.name})});
     if(!r.ok)throw 0;state=await r.json();draw();ok(true);
+    if(s.page)location.href=s.page;
   }catch(e){ok(false)}
 }
 load();setInterval(load,3000);
@@ -89,34 +135,84 @@ class ControlServer:
                 self.end_headers()
                 self.wfile.write(data)
 
+            def _json_body(self):
+                try:
+                    length = int(self.headers.get("Content-Length", 0))
+                except ValueError:
+                    raise BadRequest("bad Content-Length")
+                if length > MAX_BODY_BYTES:
+                    raise BadRequest("body too large")
+                try:
+                    body = json.loads(self.rfile.read(length) or b"{}")
+                except ValueError:
+                    raise BadRequest("body is not JSON")
+                if not isinstance(body, dict):
+                    raise BadRequest("body must be a JSON object")
+                return body
+
             def do_GET(self):
-                if self.path in ("/", "/index.html"):
+                path = self.path.split("?", 1)[0]
+                if path in ("/", "/index.html"):
                     self._send(200, PAGE, "text/html; charset=utf-8")
-                elif self.path == "/api/state":
+                elif path == "/api/state":
                     self._send(200, outer.state())
+                elif path == "/draw" and outer._freestyle():
+                    self._send(200, DRAW_PAGE.encode("utf-8"), "text/html; charset=utf-8")
+                elif path == "/api/draw/canvas.png" and outer._freestyle():
+                    self._send(200, outer._freestyle().png(), "image/png")
                 else:
                     self._send(404, {"error": "not found"})
 
             def do_POST(self):
-                if self.path != "/api/screen":
-                    return self._send(404, {"error": "not found"})
+                path = self.path.split("?", 1)[0]
                 try:
-                    length = int(self.headers.get("Content-Length", 0))
-                    if length > 1024:
-                        raise ValueError("body too large")
-                    name = json.loads(self.rfile.read(length) or b"{}")["name"]
-                except (ValueError, KeyError, TypeError):
-                    return self._send(400, {"error": "send JSON like {\"name\": \"clock\"}"})
+                    if path == "/api/screen":
+                        return self._switch(self._json_body())
+                    if path.startswith("/api/draw") and outer._freestyle():
+                        return self._draw(path, self._json_body())
+                    return self._send(404, {"error": "not found"})
+                except BadRequest as exc:
+                    return self._send(400, {"error": str(exc)})
+
+            def _switch(self, body):
+                name = body.get("name")
+                if not isinstance(name, str):
+                    raise BadRequest("send JSON like {\"name\": \"clock\"}")
                 if name not in outer._menu:
                     return self._send(404, {"error": f"unknown screen: {name}"})
                 outer._manager.set_active(name)
                 log.info("screen switched to %s", name)
                 self._send(200, outer.state())
 
+            def _draw(self, path, body):
+                screen = outer._freestyle()
+                if path == "/api/draw":
+                    stroke = body.get("stroke")
+                    if stroke is not None and not isinstance(stroke, (int, float, str)):
+                        raise BadRequest("stroke must be a number or text")
+                    screen.draw(parse_pixels(body.get("pixels")), stroke=stroke)
+                    return self._send(200, {"ok": True})
+                if path == "/api/draw/fill":
+                    x, y = parse_cell(body.get("x"), body.get("y"))
+                    screen.flood(x, y, parse_color(body.get("color")))
+                    return self._send(200, {"ok": True})
+                if path == "/api/draw/clear":
+                    screen.clear()
+                    return self._send(200, {"ok": True})
+                if path == "/api/draw/undo":
+                    return self._send(200, {"ok": True, "undone": screen.undo()})
+                return self._send(404, {"error": "not found"})
+
             def log_message(self, *args):
                 pass
 
         self._server = ThreadingHTTPServer((host, port), Handler)
+
+    def _freestyle(self):
+        try:
+            return self._manager.get("freestyle")
+        except KeyError:
+            return None
 
     @property
     def port(self):

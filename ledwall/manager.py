@@ -27,8 +27,15 @@ class ScreenManager:
 
     def describe(self, names):
         """Name, label and icon of the given screens (for the phone page)."""
-        return [{"name": n, "label": self._screens[n].label, "icon": self._screens[n].icon}
-                for n in names if n in self._screens]
+        out = []
+        for n in names:
+            if n in self._screens:
+                screen = self._screens[n]
+                item = {"name": n, "label": screen.label, "icon": screen.icon}
+                if screen.page:
+                    item["page"] = screen.page
+                out.append(item)
+        return out
 
     def set_active(self, name: str) -> None:
         if name not in self._screens:
