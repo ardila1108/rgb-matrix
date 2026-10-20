@@ -7,7 +7,7 @@ from .backends import make_backend
 from .control import ControlServer
 from .manager import ScreenManager
 from .poller import Poller
-from .screens import BusScreen, ClockScreen, FreestyleScreen, TestScreen
+from .screens import BusScreen, ClockScreen, FreestyleScreen, TestScreen, WeatherScreen
 
 log = logging.getLogger("ledwall")
 
@@ -23,17 +23,31 @@ def make_fetch():
     raise ValueError(f"unknown DATA_SOURCE: {settings.DATA_SOURCE!r}")
 
 
+def make_weather_fetch():
+    if settings.DATA_SOURCE == "demo":
+        from .data_sources.weather_demo import fetch_weather
+        return fetch_weather, 1.0                   # demo scenes change every few seconds
+    from .data_sources.weather import fetch_weather
+    return fetch_weather, settings.WEATHER_POLL_SECONDS
+
+
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     backend = make_backend()
     bus = BusScreen()
     sketch = FreestyleScreen(path=os.path.join(settings.DATA_DIR, "freestyle", "canvas.png"))
-    manager = ScreenManager([bus, ClockScreen(), sketch, TestScreen()], active=settings.SCREEN)
+    weather = WeatherScreen()
+    manager = ScreenManager([bus, ClockScreen(), weather, sketch, TestScreen()], active=settings.SCREEN)
 
     # The bus screen is always fed, so it is up to date whenever you switch to it.
     fetch, interval = make_fetch()
     poller = Poller(fetch, bus.update, interval, retry_interval=settings.FAILURE_RETRY_SECONDS)
     poller.start()
+
+    weather_fetch, weather_interval = make_weather_fetch()
+    weather_poller = Poller(weather_fetch, weather.update, weather_interval,
+                            retry_interval=settings.FAILURE_RETRY_SECONDS)
+    weather_poller.start()
 
     control = ControlServer(manager, settings.MENU_SCREENS, settings.CONTROL_PORT)
     control.start()
@@ -54,6 +68,7 @@ def main():
     finally:
         if poller:
             poller.stop()
+        weather_poller.stop()
         control.stop()
         backend.close()
 

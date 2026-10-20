@@ -15,6 +15,7 @@ ledwall/
   screens/bus.py            BusScreen: pages, header, dots, rows, transitions
   screens/bus_logic.py      pure logic: classify(), prepare_pages()
   screens/clock.py          ClockScreen: time and date in Spain
+  screens/weather.py        WeatherScreen: weather, rain chances, sun and moon
   screens/freestyle.py      FreestyleScreen: a canvas you sketch on from the phone
   screens/test.py           TestScreen: panel test patterns
   draw_page.py              the sketch page (/draw)
@@ -23,6 +24,9 @@ ledwall/
   backends.py               HardwareBackend (Pi) / SimulatorBackend (browser)
   data_sources/live.py      calls the dbus-api container, builds the pages
   data_sources/demo.py      fake data that cycles through every color state
+  data_sources/weather.py   Open-Meteo weather (free, no key); weather_demo.py = fake scenes
+  astro.py                  sunrise/sunset and moon phase, computed offline
+  icons.py                  pixel-art sun, moon with phase, clouds, rain, snow
   poller.py                 calls fetch_pages() every POLL_SECONDS
 deploy/deploy.sh            manual update script for the Pi
 ```
@@ -39,6 +43,19 @@ home network only. After a restart the panel starts on `SCREEN` from `settings.p
 Buttons shown: `MENU_SCREENS`. The **Draw** button opens the sketch page: pen, eraser, fill,
 brush sizes, colors, undo, clear. Strokes appear on the panel as you draw, and the sketch is
 kept in `DATA_DIR` (a Docker volume on the Pi), so it survives restarts and deploys. Clock timezone: `TIMEZONE`.
+
+## Weather screen
+
+Top: weather icon, temperature, today's high/low. Middle: rain chance for the next 12 hours
+(one bar per hour). Bottom: the 24 hours as a colored strip with a marker for now, sunrise and
+sunset times, and a small moon showing **today's phase**. On a clear night the big icon is the
+moon with its phase too. A pulsing blue border means rain is likely soon
+(`RAIN_ALERT_PERCENT` within `RAIN_ALERT_HOURS`).
+
+Set `LATITUDE` / `LONGITUDE` in `settings.py` to your street. Weather comes from Open-Meteo every
+`WEATHER_POLL_SECONDS` (10 min); sunrise, sunset and the moon are computed on the Pi, so the
+bottom strip works even with no internet. With `LED_DATA=demo` the screen cycles through fake
+scenes (sun, rain, fog, snow, storm, night) so you can see every look.
 
 ## Page dots
 

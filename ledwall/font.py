@@ -72,3 +72,27 @@ def draw_text(draw, text, x, y, color, sx=1, sy=1, spacing=1):
 
 def text_width(text, sx=1, spacing=1):
     return max(0, len(text) * (GLYPH_W + spacing) * sx - spacing * sx)
+
+
+# --- small 3x5 font: digits and a few symbols, for dense rows -----------------
+SMALL = {
+    "0": "111 101 101 101 111", "1": "010 110 010 010 111", "2": "111 001 111 100 111",
+    "3": "111 001 111 001 111", "4": "101 101 111 001 001", "5": "111 100 111 001 111",
+    "6": "111 100 111 101 111", "7": "111 001 001 001 001", "8": "111 101 111 101 111",
+    "9": "111 101 111 001 111", ":": "0 1 0 1 0", "/": "001 001 010 100 100",
+    "-": "000 000 111 000 000", "%": "101 001 010 100 101", " ": "00 00 00 00 00",
+}
+SMALL = {k: v.split() for k, v in SMALL.items()}
+
+
+def small_width(text):
+    return max(0, sum(len(SMALL.get(c, SMALL[" "])[0]) + 1 for c in text) - 1)
+
+
+def draw_small(draw, text, x, y, color):
+    """Draw text in the 3x5 font; returns the x just after the last glyph."""
+    for ch in text:
+        g = SMALL.get(ch, SMALL[" "])
+        draw_bitmap(draw, g, x, y, color)
+        x += len(g[0]) + 1
+    return x

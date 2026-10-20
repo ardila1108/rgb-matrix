@@ -3,5 +3,6 @@ from .bus import BusScreen
 from .clock import ClockScreen
 from .freestyle import FreestyleScreen
 from .test import TestScreen
+from .weather import WeatherScreen
 
-__all__ = ["Screen", "BusScreen", "ClockScreen", "FreestyleScreen", "TestScreen"]
+__all__ = ["Screen", "BusScreen", "ClockScreen", "FreestyleScreen", "TestScreen", "WeatherScreen"]

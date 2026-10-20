@@ -10,10 +10,19 @@ BACKEND = os.environ.get("LED_BACKEND") or "simulator"
 DATA_SOURCE = os.environ.get("LED_DATA") or "live"
 # Which screen is shown: "bus" or "test" (panel test patterns).
 SCREEN = os.environ.get("LED_SCREEN") or "clock"      # screen shown at startup
-MENU_SCREENS = ("bus", "clock", "freestyle")   # buttons on the phone page ("test" is only for LED_SCREEN=test)
+MENU_SCREENS = ("bus", "clock", "weather", "freestyle")   # buttons on the phone page ("test" is only for LED_SCREEN=test)
 DATA_DIR = os.environ.get("LED_DATA_DIR") or "data"   # where the sketch is kept between restarts
 CONTROL_PORT = 8080                 # phone page: http://<pi-ip>:8080
-TIMEZONE = "Europe/Madrid"          # clock screen
+TIMEZONE = "Europe/Madrid"          # clock and weather screens
+
+# --- Weather screen ----------------------------------------------------------
+LATITUDE = 43.3183                  # Donostia / San Sebastian: change to your street
+LONGITUDE = -1.9812
+WEATHER_API_URL = "https://api.open-meteo.com/v1/forecast"
+WEATHER_POLL_SECONDS = 600          # weather is refreshed every 10 minutes
+WEATHER_STALE_SECONDS = 3600        # older than this: the temperature turns gray
+RAIN_ALERT_PERCENT = 60             # pulsing blue border if rain chance reaches this...
+RAIN_ALERT_HOURS = 2                # ...within this many hours
 TEST_SECONDS_PER_PATTERN = 4
 FPS = 20
 SIMULATOR_PORT = 8000
