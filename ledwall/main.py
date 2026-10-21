@@ -4,6 +4,7 @@ import time
 
 import settings
 from .backends import make_backend
+from .automation import Automation, build_schedule
 from .control import ControlServer
 from .manager import ScreenManager
 from .poller import Poller
@@ -39,6 +40,12 @@ def main():
     weather = WeatherScreen()
     manager = ScreenManager([bus, ClockScreen(), weather, sketch, TestScreen()], active=settings.SCREEN)
 
+    try:
+        schedule = build_schedule(known_screens=["bus", "clock", "weather", "freestyle", "test"])
+    except ValueError as exc:
+        log.error("%s", exc)
+        raise SystemExit(1)
+
     # The bus screen is always fed, so it is up to date whenever you switch to it.
     fetch, interval = make_fetch()
     poller = Poller(fetch, bus.update, interval, retry_interval=settings.FAILURE_RETRY_SECONDS)
@@ -49,7 +56,13 @@ def main():
                             retry_interval=settings.FAILURE_RETRY_SECONDS)
     weather_poller.start()
 
-    control = ControlServer(manager, settings.MENU_SCREENS, settings.CONTROL_PORT)
+    # Showing the test patterns means you are checking the panel: no schedule then.
+    automation = Automation(schedule, manager, display=backend,
+                            enabled=settings.AUTOMATION and settings.SCREEN != "test")
+    automation.tick()                                   # right screen and brightness from frame one
+
+    control = ControlServer(manager, settings.MENU_SCREENS, settings.CONTROL_PORT,
+                            display=backend, automation=automation)
     control.start()
 
     log.info("running: screen=%s backend=%s data=%s", settings.SCREEN, settings.BACKEND, settings.DATA_SOURCE)
@@ -61,6 +74,7 @@ def main():
     try:
         while True:
             start = time.monotonic()
+            automation.tick()
             backend.show(manager.render(start))
             time.sleep(max(0.0, frame - (time.monotonic() - start)))
     except KeyboardInterrupt:

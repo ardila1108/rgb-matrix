@@ -19,7 +19,8 @@ ledwall/
   screens/freestyle.py      FreestyleScreen: a canvas you sketch on from the phone
   screens/test.py           TestScreen: panel test patterns
   draw_page.py              the sketch page (/draw)
-  control.py                phone page + API to switch screens
+  control.py                phone page + API to switch screens, brightness, automation
+  automation.py             schedule: which screen and brightness by time of day
   manager.py                ScreenManager: holds screens, picks the active one
   backends.py               HardwareBackend (Pi) / SimulatorBackend (browser)
   data_sources/live.py      calls the dbus-api container, builds the pages
@@ -34,13 +35,41 @@ deploy/deploy.sh            manual update script for the Pi
 Adding a screen later: subclass `Screen`, register it in `ledwall/main.py`'s
 `ScreenManager([...])`. Switching logic goes in `manager.py`.
 
+## Automation (settings.py)
+
+The panel can run itself by time of day. Defaults, matching a typical day:
+
+```python
+DEFAULT_SCREENS = ("clock", "weather")      # rotate, ROTATION_SECONDS (20) each
+SCREEN_SCHEDULE = [
+    {"from": "08:00", "to": "11:00", "screens": ("bus",)},     # one screen = always that one
+    {"from": "16:00", "to": "19:00", "screens": ("bus",)},
+]
+BRIGHTNESS_SCHEDULE = [{"from": "23:00", "to": "07:00", "brightness": 10}]   # else BRIGHTNESS
+```
+
+- The first matching window wins. "from" is included, "to" is not; windows may cross midnight.
+- Per window you can add `"days": ("mon", "tue", "wed", "thu", "fri")`, `"seconds": 30`, and per
+  screen `("weather", 45)`. A window can rotate any screens: `("clock", "weather", "bus")`.
+- Mistakes (bad times, unknown screens, brightness outside 1-100) are all listed in the log at
+  startup, and the tests check the shipped schedule.
+- **Brightness** changes only when a window starts or ends. A slider move on the phone stays until
+  the next scheduled change, and the schedule is applied right at startup.
+- **Picking a screen by hand** pauses the screen schedule for `MANUAL_HOLD_MINUTES` (30; 0 = until
+  you tap Resume). Drawing keeps renewing the pause. The phone page has an Automation switch,
+  shows what is running and until when, and a Resume button while a pause is active.
+- With `SCREEN = "test"` (panel test patterns) automation starts off. `AUTOMATION = False` turns
+  it off at startup; after a restart it returns to what `settings.py` says.
+
 ## Switching screens from your phone
 
 Open `http://<pi-ip>:8080` (on your PC: `http://localhost:8080`) on the same Wi-Fi and tap a
 screen. Give the Pi a fixed IP in your router so the address does not change. Add the page
 to your phone's home screen to use it like an app. There is no login: keep the port on your
 home network only. After a restart the panel starts on `SCREEN` from `settings.py`.
-Buttons shown: `MENU_SCREENS`. The **Draw** button opens the sketch page: pen, eraser, fill,
+Below the screen buttons there is a **Brightness** slider (5-100%) with Night / Dim / Day / Max
+presets: it changes the panel live. `BRIGHTNESS` in `settings.py` is the value at startup, so
+after a restart or deploy the panel returns to it. Buttons shown: `MENU_SCREENS`. The **Draw** button opens the sketch page: pen, eraser, fill,
 brush sizes, colors, undo, clear. Strokes appear on the panel as you draw, and the sketch is
 kept in `DATA_DIR` (a Docker volume on the Pi), so it survives restarts and deploys. Clock timezone: `TIMEZONE`.
 

@@ -40,6 +40,14 @@ class HardwareBackend:
                  settings.LIMIT_REFRESH_HZ, settings.PWM_LSB_NANOSECONDS, settings.FPS)
         self._matrix = RGBMatrix(options=o)
         self._canvas = self._matrix.CreateFrameCanvas()
+        self.brightness = settings.BRIGHTNESS
+
+    def set_brightness(self, percent):
+        """Change brightness while running (1-100)."""
+        percent = max(1, min(100, int(percent)))
+        self._matrix.brightness = percent
+        self._canvas.brightness = percent
+        self.brightness = percent
 
     def show(self, image):
         self._canvas.SetImage(image.convert("RGB"))
@@ -64,6 +72,7 @@ class SimulatorBackend:
     def __init__(self, port=None):
         self._png = b""
         self._lock = threading.Lock()
+        self.brightness = settings.BRIGHTNESS
         s = self.SCALE
         size = (settings.COLS * s, settings.ROWS * s)
         self._lit = Image.new("RGB", size, (0, 0, 0))     # multiply mask: dot shape
@@ -94,11 +103,21 @@ class SimulatorBackend:
             def log_message(self, *args):
                 pass
 
-        self._server = ThreadingHTTPServer(("0.0.0.0", port or settings.SIMULATOR_PORT), Handler)
+        self._server = ThreadingHTTPServer(("0.0.0.0", settings.SIMULATOR_PORT if port is None else port), Handler)
         threading.Thread(target=self._server.serve_forever, daemon=True).start()
+
+    @property
+    def port(self):
+        return self._server.server_address[1]
+
+    def set_brightness(self, percent):
+        """The preview dims like the real panel does."""
+        self.brightness = max(1, min(100, int(percent)))
 
     def show(self, image):
         big = image.convert("RGB").resize(self._lit.size, Image.NEAREST)
+        factor = self.brightness / 100
+        big = big.point(lambda v: int(v * factor))
         out = ImageChops.lighter(ImageChops.multiply(big, self._lit), self._off)
         buf = io.BytesIO()
         out.save(buf, "PNG")

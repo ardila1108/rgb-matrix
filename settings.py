@@ -9,11 +9,29 @@ BACKEND = os.environ.get("LED_BACKEND") or "simulator"
 # Use LED_DATA=demo for the fake countdown data.
 DATA_SOURCE = os.environ.get("LED_DATA") or "live"
 # Which screen is shown: "bus" or "test" (panel test patterns).
-SCREEN = os.environ.get("LED_SCREEN") or "clock"      # screen shown at startup
+SCREEN = os.environ.get("LED_SCREEN") or "bus"      # screen shown at startup
 MENU_SCREENS = ("bus", "clock", "weather", "freestyle")   # buttons on the phone page ("test" is only for LED_SCREEN=test)
 DATA_DIR = os.environ.get("LED_DATA_DIR") or "data"   # where the sketch is kept between restarts
 CONTROL_PORT = 8080                 # phone page: http://<pi-ip>:8080
 TIMEZONE = "Europe/Madrid"          # clock and weather screens
+
+# --- Automation: screens and brightness by time of day ----------------------------
+AUTOMATION = True                   # master switch at startup (there is also a switch on the phone page)
+ROTATION_SECONDS = 20               # time on each screen while rotating
+DEFAULT_SCREENS = ("clock", "weather")      # rotate through these when no window below applies
+# The first matching window wins. "from" is included, "to" is not; a window may cross midnight.
+# Optional per window: "days": ("mon", "tue", ...), "seconds": 30 (rotation time for this window),
+# and per screen ("weather", 30) to give one screen its own time. One screen = always that one.
+SCREEN_SCHEDULE = [
+    {"from": "08:00", "to": "11:00", "screens": ("bus",)},
+    {"from": "16:00", "to": "19:00", "screens": ("bus",)},
+]
+# Outside these windows the brightness is BRIGHTNESS. The schedule only acts when a window
+# starts or ends, so a slider move on the phone stays until the next change.
+BRIGHTNESS_SCHEDULE = [
+    {"from": "23:00", "to": "07:00", "brightness": 30},
+]
+MANUAL_HOLD_MINUTES = 30            # after you pick a screen by hand, automation waits (0 = until you resume)
 
 # --- Weather screen ----------------------------------------------------------
 LATITUDE = 43.3183                  # Donostia / San Sebastian: change to your street
@@ -33,7 +51,7 @@ COLS = 64
 HARDWARE_MAPPING = "regular"        # "adafruit-hat" only for a real Bonnet wiring
 DISABLE_HARDWARE_PULSING = True
 GPIO_SLOWDOWN = 4                # None = library default; flicker/noise -> try 2-4
-BRIGHTNESS = 80                     # 1-100
+BRIGHTNESS = 80                     # 1-100, at startup; the phone page slider changes it live
 # Flicker tuning (None = library default). See README "Flicker".
 PWM_BITS = None                     # lower (e.g. 9 or 8) = faster refresh, fewer color shades
 LIMIT_REFRESH_HZ = None             # e.g. 120: steadier timing, less flicker from load
