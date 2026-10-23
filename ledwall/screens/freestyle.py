@@ -21,6 +21,7 @@ class FreestyleScreen(Screen):
     label = "Draw"
     icon = "🎨"
     page = "/draw"          # the phone page that edits this screen
+    fps = 10
 
     def __init__(self, path=None):
         """`path`: PNG file where the sketch is kept between restarts (None = don't keep)."""

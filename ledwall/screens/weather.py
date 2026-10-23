@@ -36,6 +36,7 @@ class WeatherScreen(Screen):
     name = "weather"
     label = "Weather"
     icon = "🌤️"
+    fps = 4                     # animations tick twice a second
 
     def __init__(self, now=None):
         # `now` returns an aware datetime (UTC is fine); injected in tests.

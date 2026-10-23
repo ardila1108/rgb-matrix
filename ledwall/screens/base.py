@@ -17,6 +17,8 @@ class Screen(ABC):
     icon: str = "▫️"
     #: optional phone page that edits this screen (opened after tapping its button)
     page = None
+    #: frames per second this screen needs (None = settings.FPS)
+    fps = None
 
     @abstractmethod
     def update(self, data) -> None:

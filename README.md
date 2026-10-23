@@ -162,13 +162,41 @@ ssh pi@raspberrypi.local 'cd ~/led-wall && ./deploy/deploy.sh development'
 - Stop the display: `docker compose -f docker-compose.pi.yml down`
 - A value tweaked directly on the Pi is reset by the next deploy; copy keepers back to the PC.
 
-## Flicker (try in this order, one change at a time)
+## Flicker
 
-1. Is it the design? Bus rows with 1 min or less and the violet page dot blink on purpose.
-   `LED_SCREEN=test`: the full-screen fill should be rock steady.
-2. Sound off + hardware pulsing: `dtparam=audio=off` in `/boot/firmware/config.txt`, reboot,
-   then `DISABLE_HARDWARE_PULSING = False` in `settings.py`.
-3. `GPIO_SLOWDOWN = 4` (then 3, 2). Long or poor ribbon cables need higher values.
-4. Reserve a CPU core: append ` isolcpus=3` to the single line in `/boot/firmware/cmdline.txt`, reboot.
-5. Less load: `FPS = 10`, and `LIMIT_REFRESH_HZ = 120`.
-6. Faster refresh: `PWM_BITS = 9` (or 8), `PWM_LSB_NANOSECONDS = 100`.
+The panel needs a CPU core almost all the time (30-40% of one). The library runs its refresh on
+**core 3** at top priority. Anything else that lands on core 3, or software timing instead of the
+hardware pulse generator, shows up as brightness flicker. Try these in order, one at a time:
+
+1. **Hardware pulsing** (usually the biggest one). The library says that without it you get
+   "random brightness glitches". It needs the sound module gone. Check: `lsmod | grep snd_bcm2835`
+   must print nothing. If it prints something:
+   ```
+   cat <<EOF | sudo tee /etc/modprobe.d/blacklist-rgb-matrix.conf
+   blacklist snd_bcm2835
+   EOF
+   sudo update-initramfs -u
+   sudo reboot
+   ```
+   Then set `DISABLE_HARDWARE_PULSING = False` in `settings.py`. If the sound module is still
+   loaded the library refuses to start, and the log says so. This needs the panel's OE line on
+   GPIO 18, which is what the `regular` mapping uses.
+2. **Reserve core 3.** Add this to the end of the single line in `/boot/firmware/cmdline.txt`
+   (same line, no newline), then reboot:
+   ```
+   isolcpus=domain,managed_irq,3 nohz_full=3 rcu_nocbs=3 irqaffinity=0,1,2
+   ```
+   Check: `cat /sys/devices/system/cpu/isolated` prints `3`.
+3. **Already done by the app:** `APP_CPUS` keeps our own threads off core 3, the `dbus-api` service
+   is limited to cores 0-2 in the compose files, and frames that did not change are not re-sent
+   (a clock or weather screen is redrawn 4 times a second, not 20).
+4. **Steady refresh rate.** Set `SHOW_REFRESH_RATE = True`, watch `docker compose logs -f led-wall`
+   for a minute, then set `LIMIT_REFRESH_HZ` a little below the lowest value you saw. A fixed rate
+   hides the small slowdowns that look like flicker.
+5. **Faster refresh:** `PWM_BITS = 9` (then 8), `PWM_LSB_NANOSECONDS = 100`. Fewer shades, faster scan.
+6. **Brightness:** low values flicker more. Try the slider at 100% and at 10%. If only the low end
+   flickers, raise the night value in `BRIGHTNESS_SCHEDULE`.
+7. **Who is using the CPU?** `docker stats --no-stream` while it flickers. If `dbus-api` is high
+   (a Chrome fallback shows as 100%+), fix that first. To test the panel alone, stop everything and
+   run your small hello-world script with the same options: if that flickers too, it is wiring,
+   power supply, or the options above; if not, something else is using the CPU.

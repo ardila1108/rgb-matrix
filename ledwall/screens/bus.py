@@ -42,6 +42,11 @@ class BusScreen(Screen):
         self._page_start = 0.0
         self._trans = None        # {"t0", "src", "dst"} while sliding
 
+    @property
+    def fps(self):
+        """Smooth only while a page slides; otherwise blinking and the progress line need less."""
+        return settings.FPS if self._trans else 8
+
     # -- data in ------------------------------------------------------------
     def update(self, data, now=None):
         """data: list of page dicts (see bus_logic.prepare_pages)."""

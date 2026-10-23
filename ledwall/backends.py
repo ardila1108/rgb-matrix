@@ -1,6 +1,7 @@
 """Where finished frames go: the real panel or a browser preview."""
 import io
 import logging
+import os
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -32,6 +33,7 @@ class HardwareBackend:
                             ("pwm_lsb_nanoseconds", settings.PWM_LSB_NANOSECONDS)):
             if value is not None:
                 setattr(o, attr, value)
+        o.show_refresh_rate = settings.SHOW_REFRESH_RATE
         o.drop_privileges = False   # we run as root inside the container
         log.info("matrix: %dx%d mapping=%s pulsing_disabled=%s slowdown=%s brightness=%s "
                  "pwm_bits=%s refresh_limit=%s lsb_ns=%s fps=%s",
@@ -41,6 +43,19 @@ class HardwareBackend:
         self._matrix = RGBMatrix(options=o)
         self._canvas = self._matrix.CreateFrameCanvas()
         self.brightness = settings.BRIGHTNESS
+        self._keep_app_off_the_refresh_core()
+
+    @staticmethod
+    def _keep_app_off_the_refresh_core():
+        """The library runs its refresh thread on core 3. Threads we start from here on
+        inherit this limit, so our own work never competes with the refresh."""
+        if not settings.APP_CPUS or not hasattr(os, "sched_setaffinity"):
+            return
+        try:
+            os.sched_setaffinity(0, set(settings.APP_CPUS))
+            log.info("app threads limited to cores %s", sorted(settings.APP_CPUS))
+        except OSError as exc:
+            log.warning("could not limit the app to cores %s: %s", settings.APP_CPUS, exc)
 
     def set_brightness(self, percent):
         """Change brightness while running (1-100)."""

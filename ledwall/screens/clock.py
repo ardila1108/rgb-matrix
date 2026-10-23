@@ -36,6 +36,7 @@ class ClockScreen(Screen):
     name = "clock"
     label = "Clock"
     icon = "🕒"
+    fps = 4                     # the colon blinks once a second
 
     def __init__(self, now=None):
         # `now` returns an aware datetime (UTC is fine); injected in tests.

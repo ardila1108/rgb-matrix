@@ -19,6 +19,7 @@ class TestScreen(Screen):
     name = "test"
     label = "Test patterns"
     icon = "🧪"
+    fps = 10
     PATTERNS = ("bars", "grid", "scan", "fill")
 
     def update(self, data=None):

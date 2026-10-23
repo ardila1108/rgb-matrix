@@ -5,6 +5,7 @@ GET  /api/state    {"active": "bus", "brightness": 80, "screens": [{"name", "lab
 POST /api/screen   {"name": "clock"}  -> same JSON as /api/state
 POST /api/brightness {"value": 40}    -> same JSON (1-100)
 POST /api/automation {"enabled": true} -> same JSON (turns the schedule on or off)
+POST /api/pin {"name": "clock"}       -> same JSON (keep that screen on; {"name": null} unpins)
 
 Sketching (screen "freestyle"):
 GET  /draw                  the sketch page
@@ -77,6 +78,14 @@ h1{font-size:22px;margin:12px 0 4px}
 .card{appearance:none;border:2px solid var(--line);background:var(--card);color:var(--text);
  border-radius:16px;min-height:150px;display:flex;flex-direction:column;align-items:center;
  justify-content:center;gap:10px;font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.cardwrap{position:relative}
+.cardwrap .card{width:100%;height:100%}
+.card.pinned{border-color:#f5a524}
+.card.on.pinned{box-shadow:0 0 0 3px rgba(245,165,36,.25)}
+.pin{appearance:none;position:absolute;top:8px;right:8px;width:38px;height:38px;border-radius:50%;
+ border:2px solid var(--line);background:var(--bg);color:var(--text);font-size:17px;line-height:1;
+ padding:0;cursor:pointer;opacity:.55;-webkit-tap-highlight-color:transparent}
+.pin[aria-pressed=true]{opacity:1;border-color:#f5a524;background:rgba(245,165,36,.2)}
 .card:active{transform:scale(.97)}
 .card.on{border-color:var(--accent);box-shadow:0 0 0 3px rgba(77,163,255,.25)}
 .icon{font-size:44px;line-height:1}
@@ -136,12 +145,30 @@ const auto=document.getElementById('auto'),astatus=document.getElementById('asta
 function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e}
 function draw(){
   grid.replaceChildren();
+  const a=state.automation;
   state.screens.forEach(s=>{
-    const b=el('button','card'+(s.name===state.active?' on':''));
-    b.append(el('span','icon',s.icon),el('span','label',s.label),el('span','tag',s.name===state.active?'On screen':''));
+    const pinned=!!a&&a.pinned===s.name;
+    const wrap=el('div','cardwrap');
+    const b=el('button','card'+(s.name===state.active?' on':'')+(pinned?' pinned':''));
+    b.append(el('span','icon',s.icon),el('span','label',s.label),
+             el('span','tag',pinned?'Pinned':(s.name===state.active?'On screen':'')));
     b.onclick=()=>pick(s);
-    grid.appendChild(b);
+    wrap.appendChild(b);
+    if(a){
+      const p=el('button','pin','📌');
+      p.setAttribute('aria-pressed',pinned?'true':'false');
+      p.setAttribute('aria-label',(pinned?'Unpin ':'Pin ')+s.label);
+      p.onclick=e=>{e.stopPropagation();postPin(pinned?null:s.name)};
+      wrap.appendChild(p);
+    }
+    grid.appendChild(wrap);
   });
+}
+async function postPin(name){
+  try{
+    const r=await fetch('/api/pin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+    if(!r.ok)throw 0;state=await r.json();showAll();ok(true);
+  }catch(e){ok(false)}
 }
 function labelOf(n){const s=state.screens.find(x=>x.name===n);return s?s.label:n}
 function showAutomation(){
@@ -150,8 +177,10 @@ function showAutomation(){
   auto.hidden=false;
   aswitch.setAttribute('aria-checked',a.enabled?'true':'false');
   let text;
-  if(!a.enabled)text='Off: the panel stays on the screen you pick.';
-  else if(a.holding)text='Manual: holding your choice'+(a.hold_minutes?' for '+a.hold_minutes+' more min':'')+'.';
+  const pin=a.pinned?labelOf(a.pinned):null;
+  if(!a.enabled)text='Off: the panel stays on the screen you pick.'+(pin?' (Pinned: '+pin+')':'');
+  else if(a.holding)text='Manual: holding your choice'+(a.hold_minutes?' for '+a.hold_minutes+' more min':'')+(pin?', then back to pinned '+pin:'')+'.';
+  else if(pin)text='Pinned: '+pin+'. It stays until you unpin it.';
   else{
     const names=a.plan.map(labelOf);
     text=(a.rotating?'Rotating '+names.join(' / ')+(a.seconds?' ('+a.seconds+' s each)':''):'Showing '+names[0])+(a.until?' until '+a.until:'');
@@ -260,6 +289,8 @@ class ControlServer:
                         return self._brightness(self._json_body())
                     if path == "/api/automation" and outer._automation:
                         return self._automation(self._json_body())
+                    if path == "/api/pin" and outer._automation:
+                        return self._pin(self._json_body())
                     if path.startswith("/api/draw") and outer._freestyle():
                         return self._draw(path, self._json_body())
                     return self._send(404, {"error": "not found"})
@@ -284,6 +315,18 @@ class ControlServer:
                     raise BadRequest("value must be a whole number from 1 to 100")
                 outer._display.set_brightness(value)
                 log.info("brightness set to %d%%", value)
+                self._send(200, outer.state())
+
+            def _pin(self, body):
+                if "name" not in body or not (body["name"] is None or isinstance(body["name"], str)):
+                    raise BadRequest('send JSON like {"name": "clock"} or {"name": null}')
+                name = body["name"]
+                if name is None:
+                    outer._automation.unpin()
+                elif name in outer._menu:
+                    outer._automation.pin(name)
+                else:
+                    return self._send(404, {"error": f"unknown screen: {name}"})
                 self._send(200, outer.state())
 
             def _automation(self, body):

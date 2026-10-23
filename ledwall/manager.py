@@ -1,5 +1,7 @@
 from PIL import Image
 
+import settings
+
 from .screens.base import Screen
 
 
@@ -41,6 +43,11 @@ class ScreenManager:
         if name not in self._screens:
             raise KeyError(f"unknown screen: {name}")
         self._active = name
+
+    @property
+    def fps(self):
+        """How often the active screen should be redrawn."""
+        return self._screens[self._active].fps or settings.FPS
 
     def render(self, now: float) -> Image.Image:
         return self._screens[self._active].render(now)

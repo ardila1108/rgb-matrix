@@ -29,7 +29,7 @@ SCREEN_SCHEDULE = [
 # Outside these windows the brightness is BRIGHTNESS. The schedule only acts when a window
 # starts or ends, so a slider move on the phone stays until the next change.
 BRIGHTNESS_SCHEDULE = [
-    {"from": "23:00", "to": "07:00", "brightness": 30},
+    {"from": "23:00", "to": "07:00", "brightness": 10},
 ]
 MANUAL_HOLD_MINUTES = 30            # after you pick a screen by hand, automation waits (0 = until you resume)
 
@@ -50,9 +50,11 @@ ROWS = 64
 COLS = 64
 HARDWARE_MAPPING = "regular"        # "adafruit-hat" only for a real Bonnet wiring
 DISABLE_HARDWARE_PULSING = True
-GPIO_SLOWDOWN = 4                # None = library default; flicker/noise -> try 2-4
+GPIO_SLOWDOWN = 4                   # Raspberry Pi 4. Noise/ghosting -> raise; (None = library default)
 BRIGHTNESS = 80                     # 1-100, at startup; the phone page slider changes it live
 # Flicker tuning (None = library default). See README "Flicker".
+APP_CPUS = (0, 1, 2)                # keep our own threads off core 3: the panel library uses it (None = don't)
+SHOW_REFRESH_RATE = False           # True: the library prints the refresh rate in the log
 PWM_BITS = None                     # lower (e.g. 9 or 8) = faster refresh, fewer color shades
 LIMIT_REFRESH_HZ = None             # e.g. 120: steadier timing, less flicker from load
 PWM_LSB_NANOSECONDS = None          # lower (e.g. 100) = faster refresh
@@ -69,7 +71,7 @@ API_REUSE_SECONDS = 90              # a failed request keeps its last good value
 # --- Data ------------------------------------------------------------------
 POLL_SECONDS = 20                   # how often the data source is asked
 FAILURE_RETRY_SECONDS = 3           # first retry after a failed fetch; doubles up to POLL_SECONDS
-LOCAL_COUNTDOWN = False              # tick minutes down between API refreshes
+LOCAL_COUNTDOWN = True              # tick minutes down between API refreshes
 STALE_AFTER_SECONDS = 120           # no fresh data for this long -> red progress line
 
 # --- Bus screen: paging ----------------------------------------------------

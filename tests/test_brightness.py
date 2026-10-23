@@ -129,3 +129,31 @@ def test_hardware_backend_starts_at_the_configured_brightness_and_changes_live(f
     assert hw.brightness == 100
     hw.set_brightness(-4)
     assert hw.brightness == 1
+
+
+def test_hardware_backend_limits_the_app_to_the_configured_cores(fake_panel, monkeypatch):
+    seen = []
+    monkeypatch.setattr("os.sched_setaffinity", lambda pid, cpus: seen.append((pid, set(cpus))))
+    monkeypatch.setattr(settings, "APP_CPUS", (0, 1, 2))
+    HardwareBackend()
+    assert seen == [(0, {0, 1, 2})]
+
+
+def test_core_limit_can_be_switched_off_and_failures_are_survived(fake_panel, monkeypatch):
+    seen = []
+    monkeypatch.setattr("os.sched_setaffinity", lambda pid, cpus: seen.append(cpus))
+    monkeypatch.setattr(settings, "APP_CPUS", None)
+    HardwareBackend()
+    assert seen == []
+
+    def refuse(pid, cpus):
+        raise OSError("not permitted")
+    monkeypatch.setattr("os.sched_setaffinity", refuse)
+    monkeypatch.setattr(settings, "APP_CPUS", (0, 1, 2))
+    HardwareBackend()                                          # logs a warning, does not crash
+
+
+def test_hardware_backend_passes_the_refresh_rate_option(fake_panel, monkeypatch):
+    monkeypatch.setattr(settings, "SHOW_REFRESH_RATE", True)
+    monkeypatch.setattr(settings, "APP_CPUS", None)
+    assert HardwareBackend()._matrix.options.show_refresh_rate is True

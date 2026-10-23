@@ -23,6 +23,7 @@ services:
   dbus-api:
     image: ardila1108/dbus-api:latest
     init: true                    # reaps leftover Chrome processes
+    cpuset: "0-2"                 # keep it off core 3, which the panel refresh uses
     shm_size: "256mb"             # Docker's default 64 MB makes Chrome hang
     environment:
       RATE_LIMIT_MAX: "100000"    # default is 100 requests / 15 min: the screen asks far more

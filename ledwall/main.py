@@ -6,6 +6,7 @@ import settings
 from .backends import make_backend
 from .automation import Automation, build_schedule
 from .control import ControlServer
+from .frames import FrameGate
 from .manager import ScreenManager
 from .poller import Poller
 from .screens import BusScreen, ClockScreen, FreestyleScreen, TestScreen, WeatherScreen
@@ -58,7 +59,8 @@ def main():
 
     # Showing the test patterns means you are checking the panel: no schedule then.
     automation = Automation(schedule, manager, display=backend,
-                            enabled=settings.AUTOMATION and settings.SCREEN != "test")
+                            enabled=settings.AUTOMATION and settings.SCREEN != "test",
+                            state_path=os.path.join(settings.DATA_DIR, "state.json"))
     automation.tick()                                   # right screen and brightness from frame one
 
     control = ControlServer(manager, settings.MENU_SCREENS, settings.CONTROL_PORT,
@@ -70,13 +72,15 @@ def main():
     if settings.BACKEND == "simulator":
         log.info("preview at http://localhost:%d", settings.SIMULATOR_PORT)
 
-    frame = 1.0 / settings.FPS
+    gate = FrameGate()
     try:
         while True:
             start = time.monotonic()
             automation.tick()
-            backend.show(manager.render(start))
-            time.sleep(max(0.0, frame - (time.monotonic() - start)))
+            image = manager.render(start)
+            if gate.changed(image, backend.brightness):      # unchanged frames are not re-sent
+                backend.show(image)
+            time.sleep(max(0.0, 1.0 / manager.fps - (time.monotonic() - start)))
     except KeyboardInterrupt:
         pass
     finally:

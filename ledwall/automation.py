@@ -2,8 +2,10 @@
 
 Configured in settings.py (SCREEN_SCHEDULE, DEFAULT_SCREENS, BRIGHTNESS_SCHEDULE).
 """
+import json
 import logging
 import math
+import os
 import re
 import threading
 import time
@@ -160,7 +162,8 @@ def build_schedule(known_screens=None, cfg=settings):
 class Automation:
     """Switches screens and brightness by the schedule, unless you take over by hand."""
 
-    def __init__(self, schedule, manager, display=None, enabled=True, now=None, clock=time.monotonic):
+    def __init__(self, schedule, manager, display=None, enabled=True, now=None, clock=time.monotonic,
+                 state_path=None):
         self._schedule, self._manager, self._display = schedule, manager, display
         self._enabled = enabled
         self._now = now or (lambda: datetime.now(ZoneInfo(settings.TIMEZONE)))
@@ -172,6 +175,63 @@ class Automation:
         self._brightness_target = None
         self._last_tick = -1e9
         self._until_cache = None
+        self._pinned = None                  # a screen kept on until you unpin it
+        self._state_path = state_path        # where the pin is remembered across restarts
+        self._load_state()
+
+    # -- the pin: one screen kept on until unpinned -----------------------------------
+    def _load_state(self):
+        if not self._state_path or not os.path.exists(self._state_path):
+            return
+        try:
+            with open(self._state_path) as f:
+                name = json.load(f).get("pinned")
+            if name:
+                self._manager.get(name)            # must be a real screen
+                self._pinned = name
+        except Exception:
+            log.warning("ignoring unreadable state file %s", self._state_path)
+
+    def _save_state(self):
+        if not self._state_path:
+            return
+        try:
+            os.makedirs(os.path.dirname(self._state_path) or ".", exist_ok=True)
+            tmp = self._state_path + ".tmp"
+            with open(tmp, "w") as f:
+                json.dump({"pinned": self._pinned}, f)
+            os.replace(tmp, self._state_path)
+        except Exception:
+            log.exception("could not save %s", self._state_path)
+
+    def pin(self, name):
+        """Keep `name` on screen until unpin(). Pinning another screen moves the pin.
+
+        Taps on other screens are temporary (the usual manual hold), then it returns here.
+        """
+        self._manager.get(name)                    # KeyError for an unknown screen
+        with self._lock:
+            self._pinned = name
+            self._hold_until = None
+            self._plan = None
+            self._until_cache = None
+            self._manager.set_active(name)
+            self._save_state()
+        log.info("pinned %s", name)
+
+    def unpin(self):
+        with self._lock:
+            self._pinned = None
+            self._hold_until = None
+            self._plan = None                      # the schedule takes over again
+            self._until_cache = None
+            self._last_tick = -1e9
+            self._save_state()
+        log.info("unpinned")
+
+    @property
+    def pinned(self):
+        return self._pinned
 
     # -- called every frame by the main loop -----------------------------------------
     def tick(self):
@@ -197,7 +257,7 @@ class Automation:
                 self._hold_until, self._plan = None, None  # hold is over: pick up the schedule
                 log.info("manual hold ended, automation resumes")
 
-            plan = self._schedule.plan_at(moment)
+            plan = ((self._pinned, 1.0),) if self._pinned else self._schedule.plan_at(moment)
             if plan != self._plan:
                 self._plan, self._plan_start = plan, mono
             name = self._pick(plan, mono - self._plan_start)
@@ -242,9 +302,10 @@ class Automation:
         with self._lock:
             mono, moment = self._clock(), self._now()
             holding = self._hold_until is not None and mono < self._hold_until
-            plan = self._schedule.plan_at(moment)
+            plan = ((self._pinned, 1.0),) if self._pinned else self._schedule.plan_at(moment)
             seconds = {s for _, s in plan}
             status = {
+                "pinned": self._pinned,
                 "enabled": self._enabled,
                 "holding": holding,
                 "hold_minutes": None if not holding or self._hold_until == math.inf
@@ -252,7 +313,8 @@ class Automation:
                 "plan": [name for name, _ in plan],
                 "rotating": len(plan) > 1,
                 "seconds": int(seconds.pop()) if len(seconds) == 1 else None,
-                "until": self._next_change(moment, plan) if self._enabled and not holding else None,
+                "until": self._next_change(moment, plan)
+                if self._enabled and not holding and not self._pinned else None,
             }
             return status
 
