@@ -7,7 +7,7 @@ import pytest
 from ledwall.automation import Automation, build_schedule
 from ledwall.control import ControlServer
 from ledwall.manager import ScreenManager
-from ledwall.screens import BusScreen, ClockScreen, FreestyleScreen, TestScreen, WeatherScreen
+from ledwall.screens import BusScreen, ClockScreen, FreestyleScreen, HalloweenScreen, TestScreen, WeatherScreen
 from tests.test_automation import Clock, Display, KNOWN, at
 
 
@@ -25,7 +25,7 @@ def call(srv, path, body=None):
 class Rig:
     def __init__(self):
         self.when, self.clock = at(9), Clock()                      # 09:00, inside the bus window
-        self.manager = ScreenManager([BusScreen(), ClockScreen(), WeatherScreen(), FreestyleScreen(), TestScreen()])
+        self.manager = ScreenManager([BusScreen(), ClockScreen(), WeatherScreen(), HalloweenScreen(), FreestyleScreen(), TestScreen()])
         self.auto = Automation(build_schedule(KNOWN), self.manager, display=Display(),
                                now=lambda: self.when, clock=self.clock)
         self.srv = ControlServer(self.manager, ("bus", "clock", "weather", "freestyle"), port=0,

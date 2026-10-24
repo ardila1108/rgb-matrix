@@ -10,7 +10,7 @@ BACKEND = os.environ.get("LED_BACKEND") or "simulator"
 DATA_SOURCE = os.environ.get("LED_DATA") or "live"
 # Which screen is shown: "bus" or "test" (panel test patterns).
 SCREEN = os.environ.get("LED_SCREEN") or "bus"      # screen shown at startup
-MENU_SCREENS = ("bus", "clock", "weather", "freestyle")   # buttons on the phone page ("test" is only for LED_SCREEN=test)
+MENU_SCREENS = ("bus", "clock", "weather", "halloween", "freestyle")   # buttons on the phone page ("test" is only for LED_SCREEN=test)
 DATA_DIR = os.environ.get("LED_DATA_DIR") or "data"   # where the sketch is kept between restarts
 CONTROL_PORT = 8080                 # phone page: http://<pi-ip>:8080
 TIMEZONE = "Europe/Madrid"          # clock and weather screens
@@ -18,7 +18,7 @@ TIMEZONE = "Europe/Madrid"          # clock and weather screens
 # --- Automation: screens and brightness by time of day ----------------------------
 AUTOMATION = True                   # master switch at startup (there is also a switch on the phone page)
 ROTATION_SECONDS = 20               # time on each screen while rotating
-DEFAULT_SCREENS = ("clock", "weather")      # rotate through these when no window below applies
+DEFAULT_SCREENS = (("clock", 10), ("weather", 10), ("halloween", 20))  # rotate through these when no window below applies
 # The first matching window wins. "from" is included, "to" is not; a window may cross midnight.
 # Optional per window: "days": ("mon", "tue", ...), "seconds": 30 (rotation time for this window),
 # and per screen ("weather", 30) to give one screen its own time. One screen = always that one.
@@ -32,6 +32,8 @@ BRIGHTNESS_SCHEDULE = [
     {"from": "23:00", "to": "07:00", "brightness": 10},
 ]
 MANUAL_HOLD_MINUTES = 30            # after you pick a screen by hand, automation waits (0 = until you resume)
+
+HALLOWEEN_ACT_SECONDS = 10            # each act of the Halloween show; it plays one act per visit
 
 # --- Weather screen ----------------------------------------------------------
 LATITUDE = 43.3183                  # Donostia / San Sebastian: change to your street

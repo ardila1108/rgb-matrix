@@ -5,7 +5,7 @@ import pytest
 import settings
 from ledwall.automation import Automation, build_schedule
 from ledwall.manager import ScreenManager
-from ledwall.screens import BusScreen, ClockScreen, FreestyleScreen, TestScreen, WeatherScreen
+from ledwall.screens import BusScreen, ClockScreen, FreestyleScreen, HalloweenScreen, TestScreen, WeatherScreen
 from tests.test_automation import KNOWN, Clock, Display, Rig, at
 
 
@@ -86,7 +86,7 @@ def test_status_reports_the_pin():
 
 # ---- the pin survives restarts -----------------------------------------------------------
 def make(path, when=None):
-    manager = ScreenManager([BusScreen(), ClockScreen(), WeatherScreen(), FreestyleScreen(), TestScreen()])
+    manager = ScreenManager([BusScreen(), ClockScreen(), WeatherScreen(), HalloweenScreen(), FreestyleScreen(), TestScreen()])
     clock = Clock()
     auto = Automation(build_schedule(KNOWN), manager, display=Display(), now=lambda: when or at(9),
                       clock=clock, state_path=str(path))

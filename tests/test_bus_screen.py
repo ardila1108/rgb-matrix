@@ -145,3 +145,30 @@ def test_dot_priority_is_a_setting(monkeypatch):
     img = s.render(0.0)                       # n=3 -> x0=55
     assert pixel(img, (58, 3)) == settings.COLOR_RUN
     assert pixel(img, (61, 3)) == settings.COLOR_DOT_OFF
+
+
+def lit_color(img, box, color):
+    x0, y0, x1, y1 = box
+    return any(img.getpixel((x, y)) == color for x in range(x0, x1) for y in range(y0, y1))
+
+
+def test_old_data_shows_gray_dashes_and_never_red_zeros():
+    s = BusScreen()
+    s.update([{"name": "A", "buses": [{"line": "1", "minutes": 1, "walk_min": 3}]}], now=0)
+    old = settings.STALE_AFTER_SECONDS + 5000
+    for t in (old, old + 0.5):                                 # both blink phases
+        img = s.render(t)
+        assert lit_color(img, (26, 13, 48, 27), settings.COLOR_UNREACHABLE)      # "--"
+        assert not lit_color(img, (26, 13, 48, 27), settings.COLOR_GONE)         # no blinking red 0
+        assert not lit_color(img, (51, 23, 56, 27), settings.COLOR_UNIT)         # no "m"
+    assert s.render(old).getpixel((40, 10)) == settings.COLOR_STALE              # red line
+
+
+def test_fresh_data_brings_the_numbers_back():
+    s = BusScreen()
+    s.update([{"name": "A", "buses": [{"line": "1", "minutes": 12, "walk_min": 3}]}], now=0)
+    stale_time = settings.STALE_AFTER_SECONDS + 100
+    assert lit_color(s.render(stale_time), (26, 13, 48, 27), settings.COLOR_UNREACHABLE)
+    s.update([{"name": "A", "buses": [{"line": "1", "minutes": 12, "walk_min": 3}]}], now=stale_time)
+    img = s.render(stale_time + 1)
+    assert lit_color(img, (26, 13, 48, 27), settings.COLOR_RELAX)

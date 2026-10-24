@@ -7,10 +7,10 @@ import pytest
 import settings
 from ledwall.automation import Automation, Window, build_schedule, parse_hhmm
 from ledwall.manager import ScreenManager
-from ledwall.screens import BusScreen, ClockScreen, FreestyleScreen, TestScreen, WeatherScreen
+from ledwall.screens import BusScreen, ClockScreen, FreestyleScreen, HalloweenScreen, TestScreen, WeatherScreen
 
 MADRID = ZoneInfo("Europe/Madrid")
-KNOWN = ["bus", "clock", "weather", "freestyle", "test"]
+KNOWN = ["bus", "clock", "weather", "halloween", "freestyle", "test"]
 
 
 def at(hour, minute=0, day=19):
@@ -62,12 +62,13 @@ def test_days_apply_to_the_day_a_window_starts():
 def test_your_example_day():
     sched = build_schedule(KNOWN)
     plan = lambda h, m=0: names(sched.plan_at(at(h, m)))
-    assert plan(7, 59) == ["clock", "weather"]
+    rotation = list(settings.DEFAULT_SCREENS)                    # clock, weather, halloween
+    assert plan(7, 59) == rotation
     assert plan(8, 0) == ["bus"] and plan(10, 59) == ["bus"]
-    assert plan(11, 0) == ["clock", "weather"] and plan(15, 59) == ["clock", "weather"]
+    assert plan(11, 0) == rotation and plan(15, 59) == rotation
     assert plan(16, 0) == ["bus"] and plan(18, 59) == ["bus"]
-    assert plan(19, 0) == ["clock", "weather"] and plan(23, 30) == ["clock", "weather"]
-    assert [s for _, s in sched.plan_at(at(12))] == [20.0, 20.0]
+    assert plan(19, 0) == rotation and plan(23, 30) == rotation
+    assert [s for _, s in sched.plan_at(at(12))] == [20.0] * len(rotation)
 
 
 def test_your_example_brightness():
@@ -106,7 +107,7 @@ def test_days_in_the_schedule():
                               "days": ("mon", "Tuesday", "wed", "thu", "fri")}])
     sched = build_schedule(KNOWN, c)
     assert names(sched.plan_at(at(9, 0, day=19))) == ["bus"]              # Monday
-    assert names(sched.plan_at(at(9, 0, day=24))) == ["clock", "weather"] # Saturday
+    assert names(sched.plan_at(at(9, 0, day=24))) == ["clock", "weather"] # Saturday (cfg's own default)
 
 
 def test_every_mistake_is_reported_at_once():
@@ -156,8 +157,8 @@ class Rig:
     def __init__(self, hour, minute=0, enabled=True):
         self.when = at(hour, minute)
         self.clock = Clock()
-        self.manager = ScreenManager([BusScreen(), ClockScreen(), WeatherScreen(), FreestyleScreen(), TestScreen()],
-                                     active="freestyle")
+        self.manager = ScreenManager([BusScreen(), ClockScreen(), WeatherScreen(), HalloweenScreen(), FreestyleScreen(),
+                                      TestScreen()], active="freestyle")
         self.display = Display()
         self.auto = Automation(build_schedule(KNOWN), self.manager, display=self.display,
                                enabled=enabled, now=lambda: self.when, clock=self.clock)
@@ -170,14 +171,26 @@ class Rig:
         return self.manager.active
 
 
-def test_rotation_alternates_every_20_seconds():
+def test_default_rotation_changes_screen_every_20_seconds():
     rig = Rig(12)
-    assert rig.tick() == "clock"               # the rotation starts here (0 s)
-    assert rig.tick(18) == "clock"             # 18 s in
-    assert rig.tick(2.5) == "weather"          # 20.5 s in
-    assert rig.tick(18) == "weather"           # 38.5 s in
-    assert rig.tick(3) == "clock"              # 41.5 s in
-    assert rig.tick(20) == "weather"           # 61.5 s in
+    order = list(settings.DEFAULT_SCREENS)
+    assert rig.tick() == order[0]                              # the rotation starts here (0 s)
+    elapsed = 0.0
+    for step in (18, 2.5, 18, 3, 20, 20, 20):
+        elapsed += step
+        expected = order[int(elapsed // 20) % len(order)]
+        assert rig.tick(step) == expected, elapsed
+
+
+def test_two_screen_rotation_alternates_every_20_seconds(monkeypatch):
+    monkeypatch.setattr(settings, "DEFAULT_SCREENS", ("clock", "weather"))
+    rig = Rig(12)
+    assert rig.tick() == "clock"
+    assert rig.tick(18) == "clock"
+    assert rig.tick(2.5) == "weather"
+    assert rig.tick(18) == "weather"
+    assert rig.tick(3) == "clock"
+    assert rig.tick(20) == "weather"
 
 
 def test_bus_window_pins_the_bus_and_rotation_restarts_afterwards():
@@ -272,7 +285,7 @@ def test_status_describes_what_is_going_on():
     assert st["enabled"] and st["plan"] == ["bus"] and not st["rotating"] and st["until"] == "11:00"
     rig.when = at(12)
     st = rig.auto.status()
-    assert st["plan"] == ["clock", "weather"] and st["rotating"] and st["seconds"] == 20 and st["until"] == "16:00"
+    assert st["plan"] == list(settings.DEFAULT_SCREENS) and st["rotating"] and st["seconds"] == 20 and st["until"] == "16:00"
     rig.when = at(20)
     assert rig.auto.status()["until"] == "Tue 08:00"           # next change is tomorrow
     rig.auto.hold()

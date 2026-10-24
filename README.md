@@ -16,6 +16,8 @@ ledwall/
   screens/bus_logic.py      pure logic: classify(), prepare_pages()
   screens/clock.py          ClockScreen: time and date in Spain
   screens/weather.py        WeatherScreen: weather, rain chances, sun and moon
+  screens/halloween.py      HalloweenScreen: pumpkins, ghosts, bats, a dancing skeleton
+  halloween_art.py          the pixel art for it, drawn with code
   screens/freestyle.py      FreestyleScreen: a canvas you sketch on from the phone
   screens/test.py           TestScreen: panel test patterns
   draw_page.py              the sketch page (/draw)
@@ -40,7 +42,7 @@ Adding a screen later: subclass `Screen`, register it in `ledwall/main.py`'s
 The panel can run itself by time of day. Defaults, matching a typical day:
 
 ```python
-DEFAULT_SCREENS = ("clock", "weather")      # rotate, ROTATION_SECONDS (20) each
+DEFAULT_SCREENS = ("clock", "weather", "halloween")   # rotate, ROTATION_SECONDS (20) each
 SCREEN_SCHEDULE = [
     {"from": "08:00", "to": "11:00", "screens": ("bus",)},     # one screen = always that one
     {"from": "16:00", "to": "19:00", "screens": ("bus",)},
@@ -73,6 +75,24 @@ after a restart or deploy the panel returns to it. Buttons shown: `MENU_SCREENS`
 brush sizes, colors, undo, clear. Strokes appear on the panel as you draw, and the sketch is
 kept in `DATA_DIR` (a Docker volume on the Pi), so it survives restarts and deploys. Clock timezone: `TIMEZONE`.
 
+## Halloween screen
+
+A little night show in four short acts, one act per visit: HAPPY HALLOWEEN typed out with a
+pumpkin popping up and ghosts drifting in; a pumpkin patch with a ghost gliding past and eyes
+blinking in the dark; a graveyard where a skeleton climbs out of the ground and dances; and a
+haunted moon with bats, a spider on a thread and a BOO! Each time the screen comes back in the
+rotation it plays the next act from its beginning.
+
+It is part of the default rotation: `DEFAULT_SCREENS = ("clock", "weather", "halloween")`.
+To change that, edit the list in `settings.py`:
+
+```python
+DEFAULT_SCREENS = ("clock", "weather", ("halloween", 40))   # give it 40 s instead of 20
+DEFAULT_SCREENS = ("clock", "weather")                       # after Halloween: take it out
+```
+`HALLOWEEN_ACT_SECONDS` (10) is the length of each act. You can also put it in a window of
+`SCREEN_SCHEDULE`, for example every evening 18:00-23:00, or pin it with the 📌 button.
+
 ## Weather screen
 
 Top: weather icon, temperature, today's high/low. Middle: rain chance for the next 12 hours
@@ -93,6 +113,12 @@ state in `DOT_PRIORITY` (`settings.py`) that they have a bus in. Default order: 
 (leave now), **amber** (get ready), **red** (gone). Add `"run"` (orange) or `"relax"`
 (green) to the list if you want those too. `DOT_BLINK = True` makes the dots blink instead
 of staying lit.
+
+## Old bus data
+
+If no fresh bus data arrives for `STALE_AFTER_SECONDS` (2 minutes), the minutes are no longer
+trusted: the rows show gray `--` and the line under the header turns red. They come back by
+themselves as soon as data arrives again.
 
 ## Your buses (routes.py)
 

@@ -9,7 +9,7 @@ from .control import ControlServer
 from .frames import FrameGate
 from .manager import ScreenManager
 from .poller import Poller
-from .screens import BusScreen, ClockScreen, FreestyleScreen, TestScreen, WeatherScreen
+from .screens import BusScreen, ClockScreen, FreestyleScreen, HalloweenScreen, TestScreen, WeatherScreen
 
 log = logging.getLogger("ledwall")
 
@@ -39,10 +39,11 @@ def main():
     bus = BusScreen()
     sketch = FreestyleScreen(path=os.path.join(settings.DATA_DIR, "freestyle", "canvas.png"))
     weather = WeatherScreen()
-    manager = ScreenManager([bus, ClockScreen(), weather, sketch, TestScreen()], active=settings.SCREEN)
+    manager = ScreenManager([bus, ClockScreen(), weather, HalloweenScreen(), sketch, TestScreen()],
+                             active=settings.SCREEN)
 
     try:
-        schedule = build_schedule(known_screens=["bus", "clock", "weather", "freestyle", "test"])
+        schedule = build_schedule(known_screens=["bus", "clock", "weather", "halloween", "freestyle", "test"])
     except ValueError as exc:
         log.error("%s", exc)
         raise SystemExit(1)

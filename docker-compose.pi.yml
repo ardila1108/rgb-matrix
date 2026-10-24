@@ -1,6 +1,14 @@
 # Raspberry Pi: real panel. Built on the Pi itself (first build takes a few minutes).
+# Docker keeps every container's log forever by default. On an SD card that can fill the disk.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   led-wall:
+    logging: *default-logging
     build:
       context: .
       args:
@@ -21,6 +29,8 @@ services:
       LED_API_URL: ${LED_API_URL:-} # empty = http://dbus-api:3000
 
   dbus-api:
+    logging: *default-logging
+    mem_limit: 512m               # a runaway Chrome gets killed here instead of starving the whole Pi
     image: ardila1108/dbus-api:latest
     init: true                    # reaps leftover Chrome processes
     cpuset: "0-2"                 # keep it off core 3, which the panel refresh uses

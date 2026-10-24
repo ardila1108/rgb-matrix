@@ -17,13 +17,14 @@ class State(Enum):
     LEAVE = "leave"              # violet: last chance without running
     RUN = "run"                  # orange: only if you run
     GONE = "gone"                # red, blinking
+    STALE = "stale"              # no fresh data: time unknown, shown as "--"
     UNREACHABLE = "unreachable"  # gray: you can't make it
 
 
 @dataclass(frozen=True)
 class Row:
     line: str
-    minutes: int
+    minutes: object        # int, or None while the data is stale
     state: State
 
 
@@ -73,12 +74,14 @@ def prepare_pages(pages, age_seconds=0.0):
 
     pages: [{"name": "CITY", "color": (r,g,b) optional,
              "buses": [{"line": "24", "minutes": 12, "walk_min": 4}, ...]}, ...]
-    age_seconds: how old the snapshot is (for the local countdown).
+    age_seconds: how old the snapshot is. Up to STALE_AFTER_SECONDS the minutes count down
+    locally; after that the times are unknown and the rows show "--".
     Buses further away than settings.MAX_MINUTES_SHOWN are hidden. Empty pages are
     dropped; each page keeps its soonest 3 buses.
     """
     elapsed = int(age_seconds // 60) if settings.LOCAL_COUNTDOWN else 0
     limit = min(settings.MAX_MINUTES_SHOWN, MAX_DISPLAYABLE)
+    stale = age_seconds > settings.STALE_AFTER_SECONDS
     views = []
     for i, page in enumerate(pages or []):
         if not isinstance(page, dict):
@@ -99,6 +102,8 @@ def prepare_pages(pages, age_seconds=0.0):
         if not rows:
             continue
         rows.sort(key=lambda r: r.minutes)
+        if stale:                             # the numbers can no longer be trusted
+            rows = [Row(r.line, None, State.STALE) for r in rows]
         palette = settings.PAGE_COLORS
         color = tuple(page.get("color") or palette[i % len(palette)])
         name = str(page.get("name", "")).upper()[: settings.MAX_PAGE_NAME_CHARS]

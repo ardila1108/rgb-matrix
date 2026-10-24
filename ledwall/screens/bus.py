@@ -24,6 +24,7 @@ def _state_colors():
         State.RUN: settings.COLOR_RUN,
         State.GONE: settings.COLOR_GONE,
         State.UNREACHABLE: settings.COLOR_UNREACHABLE,
+        State.STALE: settings.COLOR_UNREACHABLE,
     }
 
 
@@ -152,6 +153,9 @@ class BusScreen(Screen):
             bx = 1 + (21 - font.text_width(row.line)) // 2
             font.draw_text(d, row.line, bx, t + 5, settings.COLOR_TEXT)
 
+            if row.state is State.STALE:
+                font.draw_text(d, "--", 26, t + 1, colors[row.state], sx=2, sy=2)   # time unknown
+                continue
             if row.state is not State.GONE or blink:
                 s = str(row.minutes)
                 font.draw_text(d, s, 48 - len(s) * 12 + 2, t + 1,
